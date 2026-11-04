@@ -1,0 +1,17 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
+# Lambda build output
+*.zip
+# Secrets: NEVER commit these
+.env
+.env.*
+credentials
+.aws/
+# Node
+node_modules/
+dist/
+__pycache__/

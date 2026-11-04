@@ -1,0 +1,3 @@
+# Copy to terraform.tfvars (that file is ignored by git) and edit if needed.
+region = "us-east-1"
+prefix = "ticketing"
