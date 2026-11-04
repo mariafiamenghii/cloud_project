@@ -45,5 +45,11 @@ def handler(event, context):
         "capacity": int(data["capacity"]),
         "createdAt": int(time.time()),
     }
+    # Optional fields used by the recommendations (genre, artist name, venue).
+    for field in ("artist", "venue"):
+        if str(data.get(field, "")).strip():
+            item[field] = str(data[field]).strip()[:80]
+    if str(data.get("genre", "")).strip():
+        item["genre"] = str(data["genre"]).strip().lower()[:40]
     table.put_item(Item=item)
     return _response(201, {"eventId": item["eventId"]})
