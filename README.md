@@ -66,3 +66,6 @@ Without a token the POST returns 401. With a fan token it returns 403.
 - Run `terraform fmt` before every commit (CI checks it).
 - Seats: reserve with a conditional write that also accepts expired holds.
   Do not rely on DynamoDB TTL to free seats (deletion can be delayed).
+
+## More docs
+- Part E (data, survey, recommendations, import, load test): see `docs/PART_E.md`
