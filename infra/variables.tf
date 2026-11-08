@@ -15,3 +15,10 @@ variable "lab_role_name" {
   type        = string
   default     = "LabRole"
 }
+
+variable "github_access_token" {
+  description = "GitHub token for the initial Amplify repository connection"
+  type        = string
+  sensitive   = true
+  default     = null
+}
