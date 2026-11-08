@@ -22,3 +22,54 @@ resource "aws_sqs_queue" "purchase_queue" {
     maxReceiveCount     = 5
   })
 }
+
+
+# ------------------------------------------------
+# PURCHASE WORKER - AWS Lambda
+# ------------------------------------------------
+
+# Package the Python code into a ZIP for Lambda
+data "archive_file" "purchase_worker" {
+  type        = "zip"
+  source_file = "${path.module}/../lambdas/purchase_worker/index.py"
+  output_path = "${path.module}/purchase_worker.zip"
+}
+
+# Lambda function that processes SQS messages
+resource "aws_lambda_function" "purchase_worker" {
+  function_name = "${var.prefix}-purchase-worker"
+
+  role    = data.aws_iam_role.lab.arn
+  runtime = "python3.12"
+  handler = "index.lambda_handler"
+
+  filename         = data.archive_file.purchase_worker.output_path
+  source_code_hash = data.archive_file.purchase_worker.output_base64sha256
+
+  timeout     = 30
+  memory_size = 128
+
+  environment {
+    variables = {
+      DRY_RUN = "true"
+    }
+  }
+}
+
+# ------------------------------------------------
+# CONNECT SQS TO LAMBDA
+# ------------------------------------------------
+
+resource "aws_lambda_event_source_mapping" "purchase_queue_trigger" {
+  event_source_arn = aws_sqs_queue.purchase_queue.arn
+  function_name    = aws_lambda_function.purchase_worker.arn
+
+  batch_size = 1
+  enabled    = true
+
+  function_response_types = ["ReportBatchItemFailures"]
+
+  scaling_config {
+    maximum_concurrency = 2
+  }
+}
