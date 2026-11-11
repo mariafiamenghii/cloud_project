@@ -52,7 +52,7 @@ resource "aws_lambda_function" "purchase_worker" {
   environment {
     variables = {
       ORDERS_TABLE = aws_dynamodb_table.orders.name
-      WORKFLOW_ARN = var.purchase_workflow_arn
+      WORKFLOW_ARN = aws_sfn_state_machine.purchase.arn
     }
   }
 }
@@ -75,23 +75,7 @@ resource "aws_lambda_event_source_mapping" "purchase_queue_trigger" {
   }
 }
 
-# Part D is intentionally not referenced until the branches are integrated.
-# Supply the unqualified ARN of its STANDARD state machine; no workflow is
-# created by Part C. An empty ARN fails closed in the worker (never dry-runs).
-variable "purchase_workflow_arn" {
-  description = "Unqualified ARN of Part D's STANDARD purchase workflow; configure before sending purchases."
-  type        = string
-  default     = ""
-
-  validation {
-    condition = (
-      var.purchase_workflow_arn == "" ||
-      can(regex("^arn:[a-z0-9-]+:states:[a-z0-9-]+:[0-9]{12}:stateMachine:[A-Za-z0-9_-]+$", var.purchase_workflow_arn))
-    )
-    error_message = "Use an unqualified Step Functions state machine ARN, or an empty value before integration."
-  }
-}
-
+# The integrated worker references the local STANDARD workflow directly.
 data "archive_file" "create_purchase" {
   type        = "zip"
   source_file = "${path.module}/../lambdas/create_purchase/index.py"

@@ -3,7 +3,8 @@
 Part C owns `infra/purchase.tf`, `lambdas/create_purchase/index.py`,
 `lambdas/purchase_worker/index.py`, and `tests/test_purchases.py`.
 It uses the existing HTTP API v2, Cognito JWT authorizer, events/orders tables,
-SQS queues, and LabRole. No Part D files are changed.
+SQS queues, and LabRole. On the integration branch, Part D is connected and
+hardened; see `docs/INTEGRATION_PURCHASE_WORKFLOW.md` for the combined review.
 
 ## HTTP contract
 
@@ -23,7 +24,8 @@ authenticated routes. Identity comes from
   fields, and all other extra fields are rejected.
 - `eventId`: nonempty string, no surrounding whitespace, at most 128 characters.
 - `seatId`: canonical positive integer string, at most ten digits. `1` as a JSON
-  number, `01`, `0`, and `A12` are rejected. Agree this convention with D/frontend.
+  number, `01`, `0`, and `A12` are rejected. The integrated workflow enforces
+  the same convention; the frontend must submit it.
 - `idempotencyKey`: 1–128 letters, digits, underscores or hyphens. Generate a new
   key for each intentional purchase and keep it for every retry of that purchase.
 - Maximum decoded body: 4096 UTF-8 bytes. HTTP API base64 bodies are supported.
@@ -104,59 +106,35 @@ or conflicting messages deliberately exhaust the existing five-receive policy
 and reach the DLQ. A failed status update is also retried. Review the saved
 order and workflow before any DLQ redrive; changing payload/ID is not recovery.
 
-## Part D integration requirements (not implemented here)
+## Integrated Part D workflow
 
-This branch does not create or reference a missing Terraform workflow resource.
-`purchase_workflow_arn` in `infra/purchase.tf` accepts an unqualified state machine
-ARN. It must identify D's **STANDARD** workflow; the ARN syntax alone cannot
-verify its execution type. The worker has no DRY_RUN bypass.
+`WORKFLOW_ARN` now references `aws_sfn_state_machine.purchase.arn` directly in
+`infra/purchase.tf`. The state machine is STANDARD and lives in this same root
+module. Terraform therefore creates an explicit dependency; the standalone
+`purchase_workflow_arn` variable has been removed on this integration branch.
+Remove any obsolete local value for that variable before a later deployment.
+No credential or Terraform state changes are needed.
 
-The default empty ARN allows the standalone C configuration to validate. The
-worker fails closed and retries messages if it remains empty. Do not send live
-purchase traffic until it is configured; otherwise messages eventually reach
-the DLQ. Existing queue settings, worker timeout/memory/runtime, batch size,
-partial-batch reporting, enabled mapping and concurrency remain unchanged.
+The four-field JSON contract remains unchanged. Reservation and payment task
+results remain nested under `reserve` and `payment`; ticket generation adds
+its stable ticket fields at the top level for notification.
 
-For an already deployed D workflow, supply its ARN through the ignored local
-Terraform values file or `TF_VAR_purchase_workflow_arn`. Never commit state,
-credentials, local values, `.terraform`, or generated ZIPs. The ARN itself is
-configuration, not a credential.
+The integrated implementation now provides:
 
-When the team deliberately integrates the branches later, the worker's
-WORKFLOW_ARN can reference `aws_sfn_state_machine.purchase.arn` directly in this
-Part C file, replacing the external ARN variable. That reference establishes a
-Terraform dependency. Do not reference it on this standalone branch: D's
-resource is absent. No merge or workflow changes have been performed here.
+1. Atomic event-capacity check, conditional seat reservation and order status.
+2. Same-order reservation retries and reclamation of expired held seats only.
+3. Durable simulated payment, conditional on ownership of a valid hold.
+4. Atomic sold-seat confirmation and ticket issuance on the existing paid order.
+5. Ownership-safe unpaid compensation that also records failure atomically.
+6. Persistent CONFIRMED, REJECTED, FAILED and REVIEW_REQUIRED outcomes without
+   replacing C's identity, idempotency or dispatch metadata.
+7. Bounded infrastructure retries, separate post-payment review and best-effort
+   SES notification. Failed email does not free inventory or fail the purchase.
 
-D at cached commit `45a3015` accepts the four top-level input fields. Its
-direct Lambda tasks preserve those fields; reservation/payment results are
-nested under `reserve`/`payment`. D must still implement these safety fixes:
-
-1. Validate event existence, sellability and canonical seat `1..capacity` at
-   reservation time, atomically with the conditional reservation. Intake checks
-   can become stale or be bypassed by authorized direct queue sends.
-2. Allow the same order's hold on retries; reclaim only expired **held** seats.
-   Do not rely on DynamoDB TTL for correctness.
-3. Confirm the owned seat as permanently sold when issuing the ticket, using an
-   atomic transaction with the existing order. Require an existing matching
-   order and a valid owned hold. Keep ticket issuance stable under retries.
-4. Release only holds owned by the failing order. A delayed/repeated release
-   must not free another order's seat or any sold seat.
-5. Persist success, reservation rejection, payment failure and fulfillment/
-   notification failure on the existing order, without replacing C's identity,
-   dispatch metadata or `userId`. C initializes `orderStatus` but does not infer
-   purchase outcome from the handoff.
-6. Add bounded transient retries and explicit failure paths. A post-payment
-   email failure must not release a paid seat. Payment/ticket recovery must be
-   distinct from retrying delivery of an email. SES has no exactly-once send
-   guarantee for an ambiguous response.
-7. Configure a nonempty, verified same-region SES `notify_email`. Current D
-   sends from and to that demo address, not the logged-in purchaser's address.
-
-An SQS message is deleted after successful handoff. Subsequent workflow failures
-do **not** return to SQS or its DLQ. Workflow history and durable order statuses
-must provide fulfillment recovery. Current D does not yet satisfy these safety
-requirements; configuring its ARN alone does not make purchases safe.
+An SQS message is deleted after handoff. Subsequent workflow failures do not
+return to SQS or its DLQ. For uncertain paid fulfillment, inspect the existing
+order and execution: do not change the purchase ID and start a new purchase.
+The full recovery limits and AWS test requirements are in the integration doc.
 
 ## Academy IAM requirements
 
@@ -169,8 +147,11 @@ effective permissions in the lab before deployment:
   `states:StartExecution` on the configured state machine;
   `states:DescribeExecution` on its executions; existing SQS receive/delete/get
   attributes and CloudWatch Logs permissions.
-- D: appropriate Lambda invocation, DynamoDB/transaction and SES permissions;
-  LabRole trust allowing `states.amazonaws.com`, in addition to Lambda trust.
+- D: workflow Lambda invocation; DynamoDB GetItem/UpdateItem plus the PutItem,
+  UpdateItem and ConditionCheckItem permissions used by transactional actions
+  on events/seats/orders; SES SendEmail; and CloudWatch Logs. LabRole must trust
+  `states.amazonaws.com` in addition to Lambda. These effective permissions
+  remain unverified until the authorized Academy checks.
 - Terraform's execution identity needs the existing deployment permissions,
   including passing LabRole. Part C does not create or broaden IAM roles.
 
@@ -178,9 +159,10 @@ effective permissions in the lab before deployment:
 
 Python 3.12 is the Lambda runtime. Tests use Python's standard-library unittest
 and boto3/botocore, which are supplied by Lambda and must also be available in
-the local development environment. No additional test framework is required.
+the local development environment. Integrated tests additionally use the
+Moto emulator from `tests/requirements.txt`; it is not packaged into Lambda.
 
-From the repository root:
+Install `tests/requirements.txt` in a local virtual environment. From the repository root:
 
 ```bash
 python3 -B -m unittest discover -s tests -v
@@ -190,8 +172,10 @@ git diff --check
 ```
 
 Terraform validation requires previously initialized local providers. It does
-not deploy resources. Tests replace SDK clients/resources before invocation,
-use an isolated environment, and never make AWS calls. They cover intake,
+not deploy resources. C tests replace SDK clients/resources before invocation. Integrated tests use
+Moto in memory, dummy credentials and an isolated environment; neither suite
+contacts real AWS. Workflow graph checks evaluate HCL in a temporary directory
+without providers or a backend. They cover intake,
 base64/invalid bodies, event capacity, identity spoofing, duplicate/conflicting
 requests, conditional order creation, concurrent deliveries, transient errors,
 lost handoff updates, closed-execution reconciliation, partial failures, and
@@ -199,8 +183,8 @@ old pending-order protection. Mocked conditions do not prove AWS concurrency.
 
 ## AWS Academy tests (separate approval required)
 
-No deployment or AWS tests have been run for this change. After D is corrected
-and the team authorizes deployment:
+No deployment or AWS tests have been run for this change. After the team
+authorizes deployment:
 
 1. Review the Terraform plan, STANDARD workflow ARN, LabRole permissions/trust,
    and SES identity in the chosen region.
@@ -212,7 +196,7 @@ and the team authorizes deployment:
    not overwrite the first persisted purchase.
 6. Check invalid capacity/seat/event rejection, including Ticketmaster imports.
 7. Check same-seat concurrency, hold expiry, permanent sold-seat protection and
-   ownership-safe compensation once D implements them.
+   ownership-safe compensation in real DynamoDB.
 8. Exercise transient start errors, DLQ behavior and handoff reconciliation
    using a few controlled messages; do not load test initially.
 9. Inspect post-payment ticket/email failure statuses separately from the SQS
