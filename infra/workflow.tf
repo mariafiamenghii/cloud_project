@@ -21,6 +21,7 @@ resource "aws_lambda_function" "reserve_seat" {
   environment {
     variables = {
       SEATS_TABLE  = aws_dynamodb_table.seats.name
+      EVENTS_TABLE = aws_dynamodb_table.events.name
       HOLD_SECONDS = "900"
     }
   }
@@ -60,6 +61,7 @@ resource "aws_lambda_function" "generate_ticket" {
   environment {
     variables = {
       ORDERS_TABLE = aws_dynamodb_table.orders.name
+      SEATS_TABLE  = aws_dynamodb_table.seats.name
     }
   }
 }
