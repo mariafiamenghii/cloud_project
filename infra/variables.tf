@@ -15,3 +15,9 @@ variable "lab_role_name" {
   type        = string
   default     = "LabRole"
 }
+
+variable "notify_email" {
+  description = "Email address for SES confirmation emails. Must be a VERIFIED SES identity (sandbox sends only to verified addresses). The workflow sends FROM and TO this same address."
+  type        = string
+  default     = ""
+}
