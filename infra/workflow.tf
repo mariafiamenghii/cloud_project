@@ -111,7 +111,13 @@ resource "aws_lambda_function" "release_seat" {
 }
 
 # SES sandbox identity: the workflow sends FROM and TO this verified address.
+# Only created when a notify_email is set. SES is blocked on the AWS Academy
+# and Innovation Sandbox accounts, so creating it unconditionally made
+# `terraform apply` fail for everyone with AccessDenied. With no email, the
+# send_email Lambda just records emailStatus=not_sent and the purchase still
+# completes.
 resource "aws_ses_email_identity" "notify" {
+  count = var.notify_email != "" ? 1 : 0
   email = var.notify_email
 }
 
