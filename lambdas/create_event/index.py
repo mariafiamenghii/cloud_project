@@ -23,7 +23,7 @@ def handler(event, context):
     claims = event["requestContext"]["authorizer"]["jwt"]["claims"]
     # HTTP API turns the group list into a string such as "[artist admin]".
     groups = str(claims.get("cognito:groups", "")).strip("[]").replace(",", " ").split()
-    if "artist" not in groups:
+    if "artist" not in groups and "admin" not in groups:
         return _response(403, {"error": "Only artists can create events"})
 
     try:
