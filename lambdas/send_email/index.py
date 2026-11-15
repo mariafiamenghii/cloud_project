@@ -1,37 +1,35 @@
+"""Best-effort SES notification after durable ticket confirmation."""
+
+import logging
 import os
 
 import boto3
+from purchase_common import OrderMismatch, load_order, save_email_status
 
-_ses = boto3.client("ses")
+logger = logging.getLogger(__name__)
 
 
 def handler(event, context):
-    order = event
+    client, saved = load_order(event)
+    if saved.get("orderStatus") != "CONFIRMED" or saved.get("ticketStatus") != "issued":
+        raise OrderMismatch("Only a confirmed purchase can be emailed")
+    if saved.get("emailStatus") == "sent":
+        return {"orderId": event["orderId"], "emailStatus": "sent"}
     addr = os.environ["NOTIFY_EMAIL"]
-
-    subject = f"Your ticket for event {order['eventId']}"
     body = (
-        f"Your purchase is confirmed.\n\n"
-        f"Order: {order['orderId']}\n"
-        f"Event: {order['eventId']}\n"
-        f"Seat:  {order['seatId']}\n"
-        f"Ticket code: {order.get('qrPayload', '')}\n"
-        f"QR image: {order.get('qrUrl', '')}\n"
+        f"Your purchase is confirmed.\n\nOrder: {event['orderId']}\n"
+        f"Event: {event['eventId']}\nSeat: {event['seatId']}\n"
+        f"Ticket code: {saved['qrPayload']}\nQR image: {saved['qrUrl']}\n"
     )
-
-    # Best-effort email: if SES is blocked (Academy/Innovation Sandbox) or the
-    # address is not a verified identity, don't fail the purchase. The seat and
-    # ticket are already done, so we just record why the email didn't go out.
     try:
-        # SES sandbox: send FROM and TO the same verified address.
-        _ses.send_email(
-            Source=addr,
-            Destination={"ToAddresses": [addr]},
-            Message={"Subject": {"Data": subject}, "Body": {"Text": {"Data": body}}},
+        boto3.client("ses").send_email(
+            Source=addr, Destination={"ToAddresses": [addr]},
+            Message={"Subject": {"Data": f"Your ticket for event {event['eventId']}"},
+                     "Body": {"Text": {"Data": body}}},
         )
         status = "sent"
-    except Exception as e:  # SES blocked or address not verified
-        print("Email not sent:", e)
+    except Exception as exc:
+        logger.warning("Ticket notification failed for %s (%s)", event["orderId"], type(exc).__name__)
         status = "not_sent"
-
-    return {**order, "emailStatus": status}
+    status = save_email_status(client, event, status)
+    return {"orderId": event["orderId"], "emailStatus": status}
