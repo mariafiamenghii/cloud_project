@@ -13,3 +13,7 @@ output "client_id" {
 output "region" {
   value = var.region
 }
+
+output "workflow_arn" {
+  value = aws_sfn_state_machine.purchase.arn
+}
