@@ -33,3 +33,22 @@ h3,
 p {
   line-height: 1.4;
 }
+
+
+.ticket-button {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 6px;
+  background: #7652dc;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.ticket-button:hover {
+  background: #8b68ed;
+}
