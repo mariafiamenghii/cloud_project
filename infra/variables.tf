@@ -16,17 +16,14 @@ variable "lab_role_name" {
   default     = "LabRole"
 }
 
-<<<<<<< HEAD
 variable "github_access_token" {
   description = "GitHub token for the initial Amplify repository connection"
   type        = string
   sensitive   = true
   default     = null
 }
-=======
 variable "notify_email" {
   description = "Email address for SES confirmation emails. Must be a VERIFIED SES identity (sandbox sends only to verified addresses). The workflow sends FROM and TO this same address."
   type        = string
   default     = ""
 }
->>>>>>> origin/main
