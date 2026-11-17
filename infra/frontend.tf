@@ -13,10 +13,10 @@ resource "aws_amplify_app" "frontend" {
   environment_variables = {
     AMPLIFY_MONOREPO_APP_ROOT = "web"
 
-    VITE_AWS_REGION      = var.region
-    VITE_USER_POOL_ID    = aws_cognito_user_pool.main.id
+    VITE_AWS_REGION          = var.region
+    VITE_USER_POOL_ID        = aws_cognito_user_pool.main.id
     VITE_USER_POOL_CLIENT_ID = aws_cognito_user_pool_client.web.id
-    VITE_API_URL         = aws_apigatewayv2_api.http.api_endpoint
+    VITE_API_URL             = aws_apigatewayv2_api.http.api_endpoint
   }
 
   build_spec = <<-YAML
@@ -59,5 +59,5 @@ resource "aws_amplify_branch" "main" {
 
 output "frontend_url" {
   description = "Public URL of the React website"
-  value = "https://${aws_amplify_branch.main.branch_name}.${aws_amplify_app.frontend.default_domain}"
+  value       = "https://${aws_amplify_branch.main.branch_name}.${aws_amplify_app.frontend.default_domain}"
 }
