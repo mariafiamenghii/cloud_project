@@ -497,3 +497,139 @@
     font-size: 28px;
   }
 }
+
+
+/* ARTIST DASHBOARD */
+
+.artist-container {
+  max-width: 960px;
+  margin: 40px auto;
+  padding: 24px;
+}
+
+.artist-header h1 {
+  color: #b9a1ff;
+  font-size: 38px;
+  margin-bottom: 12px;
+}
+
+.artist-header p {
+  color: #c5c0d1;
+  margin-bottom: 32px;
+}
+
+.artist-form {
+  background: #242035;
+  border-radius: 16px;
+  padding: 32px;
+}
+
+.artist-form h2 {
+  margin-top: 0;
+  margin-bottom: 28px;
+}
+
+.artist-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.artist-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
+  min-width: 0;
+}
+
+.artist-field label {
+  color: #e4dff0;
+  font-weight: 600;
+}
+
+.artist-field input,
+.artist-field select {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #51476d;
+  border-radius: 8px;
+  background: #171329;
+  color: white;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.artist-field input:focus,
+.artist-field select:focus {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+.artist-submit {
+  width: 100%;
+  padding: 16px;
+  background: #7652dc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.artist-submit:hover:not(:disabled) {
+  background: #8b68ed;
+}
+
+.artist-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.artist-demo-notice {
+  color: #c5c0d1;
+  margin-bottom: 20px;
+}
+
+.artist-success {
+  background: #213b31;
+  border: 1px solid #3b765a;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 24px;
+  overflow-wrap: anywhere;
+}
+
+.artist-success h3 {
+  color: #9ce6b9;
+}
+
+.artist-success button {
+  background: #7652dc;
+  color: white;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.artist-error {
+  margin-top: 20px;
+  color: #ffb3b3;
+}
+
+@media (max-width: 600px) {
+  .artist-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .artist-container {
+    padding: 16px;
+  }
+
+  .artist-form {
+    padding: 20px;
+  }
+}

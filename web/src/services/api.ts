@@ -92,3 +92,39 @@ export function createPurchase(
     true
   );
 }
+
+
+export type CreateEventInput = {
+  name: string;
+  artist?: string;
+  city: string;
+  venue?: string;
+  date: string;
+  genre?: string;
+  price: number;
+  capacity: number;
+};
+
+export async function createEvent(
+  eventData: CreateEventInput
+): Promise<{ eventId: string }> {
+  const result = await apiRequest(
+    "/events",
+    {
+      method: "POST",
+      body: JSON.stringify(eventData),
+    },
+    true
+  );
+
+  if (
+    !result ||
+    typeof result !== "object" ||
+    !("eventId" in result) ||
+    typeof result.eventId !== "string"
+  ) {
+    throw new Error("Invalid event creation response");
+  }
+
+  return { eventId: result.eventId };
+}

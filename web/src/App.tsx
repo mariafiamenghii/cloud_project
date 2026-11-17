@@ -7,8 +7,9 @@ import Home from "./pages/Home";
 import Survey from "./pages/Survey";
 import Recommendations from "./pages/Recommendations";
 import Purchase from "./pages/Purchase";
-import type { Event } from "./components/EventCard";
+import ArtistDashboard from "./pages/ArtistDashboard";
 
+import type { Event } from "./components/EventCard";
 import "./App.css";
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
@@ -18,7 +19,12 @@ const authConfigured = Boolean(
   import.meta.env.VITE_USER_POOL_CLIENT_ID
 );
 
-type Page = "home" | "survey" | "recommendations" | "purchase";
+type Page =
+  | "home"
+  | "survey"
+  | "recommendations"
+  | "purchase"
+  | "artist";
 
 function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -30,7 +36,6 @@ function App() {
   }
 
   function handleBuy(event: Event) {
-    // Do not allow internal purchases of imported events.
     if (
       event.source === "ticketmaster" ||
       !event.capacity ||
@@ -42,7 +47,6 @@ function App() {
     setSelectedEvent(event);
     setCurrentPage("purchase");
 
-    // Live purchases require Cognito authentication.
     if (!demoMode) {
       setShowLogin(true);
     }
@@ -55,6 +59,9 @@ function App() {
 
       case "recommendations":
         return <Recommendations />;
+
+      case "artist":
+        return <ArtistDashboard />;
 
       case "purchase":
         return selectedEvent ? (
@@ -71,7 +78,7 @@ function App() {
     }
   }
 
-  function renderNavigation() {
+  function renderNavigation(includeArtist: boolean) {
     return (
       <div className="auth-navigation">
         <button
@@ -94,15 +101,24 @@ function App() {
         >
           Recommended for You
         </button>
+
+        {includeArtist && (
+          <button
+            type="button"
+            onClick={() => navigate("artist")}
+          >
+            Artist Dashboard
+          </button>
+        )}
       </div>
     );
   }
 
-  // Public website and demo mode
+  // Public website and demo mode.
   if (!showLogin) {
     return (
       <>
-        {renderNavigation()}
+        {renderNavigation(demoMode)}
 
         <div className="auth-navigation">
           <button
@@ -121,7 +137,7 @@ function App() {
     );
   }
 
-  // Authenticated website
+  // Authenticated website.
   return (
     <div className="auth-page">
       <Authenticator loginMechanisms={["email"]}>
@@ -143,7 +159,7 @@ function App() {
               </button>
             </div>
 
-            {renderNavigation()}
+            {renderNavigation(true)}
             {renderPage()}
           </div>
         )}
