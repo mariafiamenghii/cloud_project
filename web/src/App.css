@@ -114,6 +114,9 @@
 
 .auth-navigation {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
   justify-content: flex-end;
   padding: 16px 32px;
 }
@@ -210,6 +213,13 @@
 .genre-button.selected {
   background: #7652dc;
   border-color: #b9a1ff;
+  box-shadow: 0 0 0 2px #b9a1ff;
+  font-weight: 700;
+}
+
+.genre-button:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 4px;
 }
 
 .survey-submit {

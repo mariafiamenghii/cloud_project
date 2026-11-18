@@ -17,6 +17,7 @@ resource "aws_amplify_app" "frontend" {
     VITE_USER_POOL_ID        = aws_cognito_user_pool.main.id
     VITE_USER_POOL_CLIENT_ID = aws_cognito_user_pool_client.web.id
     VITE_API_URL             = aws_apigatewayv2_api.http.api_endpoint
+    VITE_DEMO_MODE           = "false"
   }
 
   build_spec = <<-YAML
@@ -60,4 +61,14 @@ resource "aws_amplify_branch" "main" {
 output "frontend_url" {
   description = "Public URL of the React website"
   value       = "https://${aws_amplify_branch.main.branch_name}.${aws_amplify_app.frontend.default_domain}"
+}
+
+output "frontend_app_id" {
+  description = "Amplify app ID used to start and inspect deployment jobs"
+  value       = aws_amplify_app.frontend.id
+}
+
+output "frontend_branch" {
+  description = "Git branch deployed by Amplify"
+  value       = aws_amplify_branch.main.branch_name
 }

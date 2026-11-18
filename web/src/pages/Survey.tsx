@@ -110,6 +110,7 @@ export default function Survey() {
                   aria-pressed={selected}
                   onClick={() => toggleGenre(genre)}
                 >
+                  {selected && <span aria-hidden="true">✓ </span>}
                   {genre}
                 </button>
               );

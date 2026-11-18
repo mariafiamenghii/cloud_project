@@ -4,6 +4,9 @@
 *.tfstate.*
 crash.log
 terraform.tfvars
+*.tfvars
+*.tfvars.json
+*.tfplan
 # Lambda build output
 *.zip
 # Secrets: NEVER commit these
