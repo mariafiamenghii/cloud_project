@@ -93,6 +93,43 @@ export function createPurchase(
   );
 }
 
+export type Order = {
+  orderId: string;
+  eventId?: string;
+  seatId?: string;
+  orderStatus?: string;
+  ticketStatus?: string;
+  paymentStatus?: string;
+  emailStatus?: string;
+  qrPayload?: string;
+  qrUrl?: string;
+  issuedAt?: number;
+  failureStage?: string;
+};
+
+// Reads the buyer's own order. Returns null while the order is not readable
+// yet (404) so the caller can keep polling right after a purchase request.
+export async function getOrder(orderId: string): Promise<Order | null> {
+  try {
+    const data = await apiRequest(
+      `/orders/${encodeURIComponent(orderId)}`,
+      {},
+      true
+    );
+
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid order response");
+    }
+
+    return data as Order;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("404")) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 
 export type CreateEventInput = {
   name: string;

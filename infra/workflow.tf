@@ -281,3 +281,54 @@ resource "aws_sfn_state_machine" "purchase" {
     }
   })
 }
+
+# ------------------------------------------------
+# ORDER STATUS READ (Part D read side)
+# GET /orders/{orderId} -> the buyer's order status + ticket QR.
+# SES is blocked on the lab accounts, so the website shows the QR ticket here
+# instead of emailing it. The frontend polls this after a purchase.
+# ------------------------------------------------
+data "archive_file" "get_order" {
+  type        = "zip"
+  source_file = "${path.module}/../lambdas/get_order/index.py"
+  output_path = "${path.module}/get_order.zip"
+}
+
+resource "aws_lambda_function" "get_order" {
+  function_name    = "${var.prefix}-get-order"
+  role             = data.aws_iam_role.lab.arn
+  runtime          = "python3.12"
+  handler          = "index.handler"
+  filename         = data.archive_file.get_order.output_path
+  source_code_hash = data.archive_file.get_order.output_base64sha256
+  timeout          = 10
+
+  environment {
+    variables = {
+      ORDERS_TABLE = aws_dynamodb_table.orders.name
+    }
+  }
+}
+
+resource "aws_apigatewayv2_integration" "get_order" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.get_order.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "get_order" {
+  api_id             = aws_apigatewayv2_api.http.id
+  route_key          = "GET /orders/{orderId}"
+  target             = "integrations/${aws_apigatewayv2_integration.get_order.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_lambda_permission" "get_order" {
+  statement_id  = "AllowAPIGatewayGetOrder"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_order.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/GET/orders/*"
+}
