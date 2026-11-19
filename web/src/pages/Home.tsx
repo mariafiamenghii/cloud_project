@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import EventCard, { type Event } from "../components/EventCard";
 import { getEvents } from "../services/api";
+import { upcomingEvents } from "../utils/events";
 
 // Use sample events locally until AWS is connected.
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
@@ -173,7 +174,7 @@ export default function Home({ onBuy }: HomeProps) {
   }, []);
 
   // Search events by name, artist, city, genre or venue.
-  const filteredEvents = events.filter((event) =>
+  const filteredEvents = upcomingEvents(events).filter((event) =>
     [
       event.name,
       event.artist,

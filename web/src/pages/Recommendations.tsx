@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import EventCard, { type Event } from "../components/EventCard";
 import { getRecommendations } from "../services/api";
+import { upcomingEvents } from "../utils/events";
 
 type RecommendedEvent = Event & {
   score: number;
@@ -20,6 +21,7 @@ const demoRecommendations: RecommendedEvent[] = [
     date: "2026-12-12",
     price: 25,
     genre: "Indie",
+    source: "sample",
     score: 6,
     reasons: ["you like indie", "in Barcelona", "fits your budget"],
   },
@@ -31,6 +33,7 @@ const demoRecommendations: RecommendedEvent[] = [
     date: "2026-12-19",
     price: 45,
     genre: "Electronic",
+    source: "sample",
     score: 4,
     reasons: ["you like electronic", "fits your budget"],
   },
@@ -83,6 +86,10 @@ function normalizeRecommendation(value: unknown): RecommendedEvent {
       /^https?:\/\//i.test(record.externalUrl)
       ? record.externalUrl
       : undefined,
+    capacity: record.capacity !== undefined && record.capacity !== null &&
+      Number.isSafeInteger(Number(record.capacity)) && Number(record.capacity) >= 0
+      ? Number(record.capacity)
+      : undefined,
     score: typeof record.score === "number"
       ? record.score
       : 0,
@@ -94,7 +101,7 @@ function normalizeRecommendation(value: unknown): RecommendedEvent {
   };
 }
 
-export default function Recommendations() {
+export default function Recommendations({ onBuy }: { onBuy?: (event: Event) => void }) {
   const [events, setEvents] = useState<RecommendedEvent[]>(
     demoMode ? demoRecommendations : []
   );
@@ -137,6 +144,8 @@ export default function Recommendations() {
     };
   }, []);
 
+  const upcoming = upcomingEvents(events);
+
   return (
     <main className="container">
       <section className="hero">
@@ -157,9 +166,9 @@ export default function Recommendations() {
       {!loading && !error && (
         <>
           <div className="event-grid">
-            {events.map((event) => (
+            {upcoming.map((event) => (
               <div key={event.id}>
-                <EventCard event={event} />
+                <EventCard event={event} onBuy={onBuy} />
 
                 <div className="recommendation-reasons">
                   <strong>Why we recommend this:</strong>
@@ -172,7 +181,7 @@ export default function Recommendations() {
             ))}
           </div>
 
-          {events.length === 0 && (
+          {upcoming.length === 0 && (
             <p>No recommendations available yet.</p>
           )}
         </>

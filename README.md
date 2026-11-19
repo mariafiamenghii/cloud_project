@@ -68,4 +68,5 @@ Without a token the POST returns 401. With a fan token it returns 403.
   Do not rely on DynamoDB TTL to free seats (deletion can be delayed).
 
 ## More docs
+- Part A (frontend feedback, Amplify deployment and GitHub token): see `docs/PART_A.md`
 - Part E (data, survey, recommendations, import, load test): see `docs/PART_E.md`
