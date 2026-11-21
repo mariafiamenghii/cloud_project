@@ -43,6 +43,8 @@ export async function apiRequest(
   return response.json();
 }
 
+// EVENTS
+
 export async function getEvents(): Promise<unknown[]> {
   const data = await apiRequest("/events");
 
@@ -52,84 +54,6 @@ export async function getEvents(): Promise<unknown[]> {
 
   return data;
 }
-
-export function getRecommendations() {
-  return apiRequest("/recommendations", {}, true);
-}
-
-export function getPreferences() {
-  return apiRequest("/preferences", {}, true);
-}
-
-export function savePreferences(
-  preferences: Record<string, unknown>
-) {
-  return apiRequest(
-    "/preferences",
-    {
-      method: "POST",
-      body: JSON.stringify(preferences),
-    },
-    true
-  );
-}
-
-export function createPurchase(
-  eventId: string,
-  seatId: string,
-  idempotencyKey: string
-) {
-  return apiRequest(
-    "/purchases",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        eventId,
-        seatId,
-        idempotencyKey,
-      }),
-    },
-    true
-  );
-}
-
-export type Order = {
-  orderId: string;
-  eventId?: string;
-  seatId?: string;
-  orderStatus?: string;
-  ticketStatus?: string;
-  paymentStatus?: string;
-  emailStatus?: string;
-  qrPayload?: string;
-  qrUrl?: string;
-  issuedAt?: number;
-  failureStage?: string;
-};
-
-// Reads the buyer's own order. Returns null while the order is not readable
-// yet (404) so the caller can keep polling right after a purchase request.
-export async function getOrder(orderId: string): Promise<Order | null> {
-  try {
-    const data = await apiRequest(
-      `/orders/${encodeURIComponent(orderId)}`,
-      {},
-      true
-    );
-
-    if (!data || typeof data !== "object") {
-      throw new Error("Invalid order response");
-    }
-
-    return data as Order;
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("404")) {
-      return null;
-    }
-    throw err;
-  }
-}
-
 
 export type CreateEventInput = {
   name: string;
@@ -166,6 +90,54 @@ export async function createEvent(
   return { eventId: result.eventId };
 }
 
+// RECOMMENDATIONS
+
+export function getRecommendations() {
+  return apiRequest("/recommendations", {}, true);
+}
+
+// USER PREFERENCES
+
+export function getPreferences() {
+  return apiRequest("/preferences", {}, true);
+}
+
+export function savePreferences(
+  preferences: Record<string, unknown>
+) {
+  return apiRequest(
+    "/preferences",
+    {
+      method: "POST",
+      body: JSON.stringify(preferences),
+    },
+    true
+  );
+}
+
+// PURCHASES
+
+export function createPurchase(
+  eventId: string,
+  seatId: string,
+  idempotencyKey: string
+) {
+  return apiRequest(
+    "/purchases",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        eventId,
+        seatId,
+        idempotencyKey,
+      }),
+    },
+    true
+  );
+}
+
+// ORDER STATUS AND QR TICKETS
+
 export type Order = {
   orderId: string;
   eventId?: string;
@@ -180,9 +152,15 @@ export type Order = {
   failureStage?: string;
 };
 
-// Retrieve an order after the purchase request is accepted.
-// A 404 is treated as temporary because SQS processes
-// purchases asynchronously.
+// Retrieve the authenticated user's order.
+//
+// A 404 returns null because the purchase worker may not
+// have created the DynamoDB order immediately after SQS
+// accepts the purchase request.
+//
+// Purchase.tsx polls this endpoint until the order is
+// CONFIRMED, FAILED, REJECTED or REVIEW_REQUIRED.
+
 export async function getOrder(
   orderId: string
 ): Promise<Order | null> {
