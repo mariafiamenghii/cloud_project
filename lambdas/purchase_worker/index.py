@@ -1,6 +1,5 @@
-"""Persist each order once and hand it off to a Standard Step Functions workflow."""
+"""Hand off purchases to a Standard Step Functions workflow."""
 
-import hashlib
 import json
 import logging
 import os
@@ -9,6 +8,8 @@ import time
 
 import boto3
 from botocore.exceptions import ClientError
+
+from purchase_dispatch import order_fingerprint, persist_pending_order, read_order, serialize_order
 
 logger = logging.getLogger(__name__)
 REQUIRED_FIELDS = ("orderId", "userId", "eventId", "seatId")
@@ -34,44 +35,23 @@ def _process(record):
     if not re.fullmatch(r"[1-9][0-9]{0,9}", order["seatId"]):
         raise ValueError("seatId must be a canonical positive integer string")
 
-    workflow_input = json.dumps(order, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    fingerprint = hashlib.sha256(workflow_input.encode("utf-8")).hexdigest()
+    workflow_input = serialize_order(order)
+    fingerprint = order_fingerprint(workflow_input)
     table = boto3.resource("dynamodb").Table(os.environ["ORDERS_TABLE"])
-    now = int(time.time())
-    item = {
-        **order,
-        "requestFingerprint": fingerprint,
-        "workflowInput": workflow_input,
-        "workflowArn": os.environ.get("WORKFLOW_ARN", ""),
-        "createdAt": now,
-        "orderStatus": "PENDING",
-        "dispatchStatus": "PENDING",
-    }
-    if not item["workflowArn"]:
-        raise RuntimeError("WORKFLOW_ARN is not configured")
-    if not re.fullmatch(
-        r"arn:[a-z0-9-]+:states:[a-z0-9-]+:[0-9]{12}:stateMachine:[A-Za-z0-9_-]+",
-        item["workflowArn"],
+    item = read_order(table, order["orderId"])
+    if item is None:
+        # Messages queued before intake began writing orders still need a record.
+        item = persist_pending_order(table, order, workflow_input)
+    if (
+        item.get("requestFingerprint") != fingerprint
+        or item.get("workflowInput") != workflow_input
+        or any(item.get(field) != order[field] for field in REQUIRED_FIELDS)
     ):
-        raise ValueError("WORKFLOW_ARN must be an unqualified state machine ARN")
-
-    try:
-        table.put_item(Item=item, ConditionExpression="attribute_not_exists(orderId)")
-    except ClientError as exc:
-        if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
-            raise
-        item = table.get_item(Key={"orderId": order["orderId"]}, ConsistentRead=True).get("Item")
-        if (
-            not item
-            or item.get("requestFingerprint") != fingerprint
-            or item.get("workflowInput") != workflow_input
-            or any(item.get(field) != order[field] for field in REQUIRED_FIELDS)
-        ):
-            raise ValueError("Order identity conflicts with the persisted purchase") from exc
+        raise ValueError("Order identity conflicts with the persisted purchase")
 
     if item["dispatchStatus"] == "STARTED":
         return
-    if now - item["createdAt"] >= MAX_PENDING_AGE:
+    if int(time.time()) - item["createdAt"] >= MAX_PENDING_AGE:
         raise RuntimeError("Old pending order needs manual reconciliation")
 
     # Use the persisted ARN and exact input even if configuration changes on retry.
@@ -116,6 +96,13 @@ def lambda_handler(event, context):
         message_id = record["messageId"]
         try:
             _process(record)
+        except ClientError as exc:
+            logger.error(
+                "Purchase message %s failed in %s (%s, AWS request %s)",
+                message_id, exc.operation_name, exc.response["Error"]["Code"],
+                exc.response.get("ResponseMetadata", {}).get("RequestId", "unavailable"),
+            )
+            failures.append({"itemIdentifier": message_id})
         except Exception as exc:
             logger.error("Purchase message %s failed (%s)", message_id, type(exc).__name__)
             failures.append({"itemIdentifier": message_id})

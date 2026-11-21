@@ -2,6 +2,10 @@
 # OWNER: Person C - Purchase system
 # SQS queues for processing ticket purchase requests.
 
+locals {
+  purchase_worker_timeout_seconds = 30
+}
+
 # Dead-Letter Queue: stores messages that repeatedly fail.
 resource "aws_sqs_queue" "purchase_dlq" {
   name                      = "${var.prefix}-purchase-dlq"
@@ -11,8 +15,9 @@ resource "aws_sqs_queue" "purchase_dlq" {
 
 # Main queue: stores incoming purchase requests.
 resource "aws_sqs_queue" "purchase_queue" {
-  name                       = "${var.prefix}-purchase-queue"
-  visibility_timeout_seconds = 180
+  name = "${var.prefix}-purchase-queue"
+  # Lambda recommends six times the function timeout for a zero batch window.
+  visibility_timeout_seconds = 6 * local.purchase_worker_timeout_seconds
   message_retention_seconds  = 345600 # 4 days
   receive_wait_time_seconds  = 20
   sqs_managed_sse_enabled    = true
@@ -31,8 +36,17 @@ resource "aws_sqs_queue" "purchase_queue" {
 # Package the Python code into a ZIP for Lambda
 data "archive_file" "purchase_worker" {
   type        = "zip"
-  source_file = "${path.module}/../lambdas/purchase_worker/index.py"
   output_path = "${path.module}/purchase_worker.zip"
+
+  source {
+    content  = file("${path.module}/../lambdas/purchase_worker/index.py")
+    filename = "index.py"
+  }
+
+  source {
+    content  = file("${path.module}/../lambdas/purchase_dispatch.py")
+    filename = "purchase_dispatch.py"
+  }
 }
 
 # Lambda function that processes SQS messages
@@ -46,7 +60,7 @@ resource "aws_lambda_function" "purchase_worker" {
   filename         = data.archive_file.purchase_worker.output_path
   source_code_hash = data.archive_file.purchase_worker.output_base64sha256
 
-  timeout     = 30
+  timeout     = local.purchase_worker_timeout_seconds
   memory_size = 128
 
   environment {
@@ -75,11 +89,19 @@ resource "aws_lambda_event_source_mapping" "purchase_queue_trigger" {
   }
 }
 
-# The integrated worker references the local STANDARD workflow directly.
 data "archive_file" "create_purchase" {
   type        = "zip"
-  source_file = "${path.module}/../lambdas/create_purchase/index.py"
   output_path = "${path.module}/create_purchase.zip"
+
+  source {
+    content  = file("${path.module}/../lambdas/create_purchase/index.py")
+    filename = "index.py"
+  }
+
+  source {
+    content  = file("${path.module}/../lambdas/purchase_dispatch.py")
+    filename = "purchase_dispatch.py"
+  }
 }
 
 resource "aws_lambda_function" "create_purchase" {
@@ -97,6 +119,7 @@ resource "aws_lambda_function" "create_purchase" {
       EVENTS_TABLE       = aws_dynamodb_table.events.name
       ORDERS_TABLE       = aws_dynamodb_table.orders.name
       PURCHASE_QUEUE_URL = aws_sqs_queue.purchase_queue.url
+      WORKFLOW_ARN       = aws_sfn_state_machine.purchase.arn
     }
   }
 }

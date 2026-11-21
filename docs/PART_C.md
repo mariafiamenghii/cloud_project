@@ -1,7 +1,7 @@
 # Part C: purchase intake and workflow handoff
 
 Part C owns `infra/purchase.tf`, `lambdas/create_purchase/index.py`,
-`lambdas/purchase_worker/index.py`, and `tests/test_purchases.py`.
+`lambdas/purchase_worker/index.py`, `lambdas/purchase_dispatch.py`, and `tests/test_purchases.py`.
 It uses the existing HTTP API v2, Cognito JWT authorizer, events/orders tables,
 SQS queues, and LabRole. On the integration branch, Part D is connected and
 hardened; see `docs/INTEGRATION_PURCHASE_WORKFLOW.md` for the combined review.
@@ -39,9 +39,12 @@ Success returns HTTP `202`:
 {"orderId": "purchase-<64 hex characters>", "status": "accepted"}
 ```
 
-This acknowledges enqueueing, or an identical already-dispatched purchase. It
-does not promise payment success, a reserved seat, or email delivery. There is no
-new order-status endpoint in Part C; inspect DynamoDB/workflow history in tests.
+This acknowledges a persisted order and either a successful SQS send or an
+already-dispatched purchase. Poll the existing `GET /orders/{orderId}` route
+using the same buyer's Cognito bearer token. It returns `200` with `orderId`
+and `orderStatus` as soon as the POST returns `202`. The workflow advances
+`PENDING` through `RESERVED` and `PAID` to `CONFIRMED`, or records `REJECTED`,
+`FAILED`, or `REVIEW_REQUIRED`. The GET response also includes available ticket fields.
 
 Failures: `400` invalid input/unavailable event or seat, `401` missing identity,
 `404` missing event, `409` known key reuse with different purchase details,
@@ -56,21 +59,20 @@ prefixed with `purchase-`. It is a valid Step Functions execution name, 73
 characters long. Users cannot collide simply by choosing the same client key.
 No additional CORS header is needed because the key travels in the JSON body.
 
-Intake reads existing orders consistently. A known conflicting purchase returns
-409; an identical dispatched purchase returns 202 without another queue send.
-Until the worker has persisted an order, retries may enqueue duplicates. SQS is
-unordered: if callers reuse a key for different payloads before persistence,
-both requests can return 202. The first **processed** purchase claims the key;
-the worker rejects the conflict, retries it, and eventually sends it to the DLQ.
-There is no guarantee of synchronous 409 in that race. Never change a purchase
-while reusing its key.
+Intake reads existing orders consistently and claims new keys with a
+conditional write before sending to SQS. For competing valid payloads under
+one key, the first write wins and intake returns `409` for the other payload.
+An identical dispatched purchase returns `202` without another queue send.
+Identical pending retries can enqueue duplicates. If the SQS send fails, the
+saved order stays `PENDING` and a retry with the same key can resend it.
 
 The worker accepts exactly `orderId`, `userId`, `eventId`, `seatId`. Queue access
 must be restricted to authorized producers/operators; the worker's event is an
 SQS event and has no end-user JWT to verify. Direct test sends must use this same
 contract. Demo payment-failure flags are not accepted through the public flow.
 
-Before starting execution, the worker conditionally inserts the full order:
+Intake conditionally inserts the full order. The worker can also create it for
+messages queued before intake started writing orders.
 
 | Fields | Purpose |
 |---|---|
@@ -103,8 +105,9 @@ they must not silently restart after execution history/name protection expires.
 
 All processing errors return the message ID in `batchItemFailures`. Malformed
 or conflicting messages deliberately exhaust the existing five-receive policy
-and reach the DLQ. A failed status update is also retried. Review the saved
-order and workflow before any DLQ redrive; changing payload/ID is not recovery.
+and reach the DLQ. A failed handoff update is also retried. If dispatch cannot
+be confirmed by the time the message reaches the DLQ, the order can still show
+`PENDING`. Review the saved order and workflow before redriving the original message.
 
 ## Integrated Part D workflow
 
@@ -141,8 +144,9 @@ The full recovery limits and AWS test requirements are in the integration doc.
 LabRole is reused without changing shared role policies or trust. Verify its
 effective permissions in the lab before deployment:
 
-- Producer: `dynamodb:GetItem` on events/orders, `sqs:SendMessage` on this queue,
-  and CloudWatch Logs writes.
+- Producer: `dynamodb:GetItem` on events/orders, `dynamodb:PutItem` on orders,
+  `sqs:SendMessage` on this queue, and CloudWatch Logs writes.
+- GET status: `dynamodb:GetItem` on orders and CloudWatch Logs writes.
 - Worker: `dynamodb:PutItem`, `GetItem`, `UpdateItem` on orders;
   `states:StartExecution` on the configured state machine;
   `states:DescribeExecution` on its executions; existing SQS receive/delete/get
@@ -189,11 +193,12 @@ authorizes deployment:
 1. Review the Terraform plan, STANDARD workflow ARN, LabRole permissions/trust,
    and SES identity in the chosen region.
 2. Use one tiny event with capacity two and an authenticated test user.
-3. Verify missing/invalid JWT rejection and a valid POST returning 202.
+3. Verify missing/invalid JWT rejection, a valid POST returning `202`, and
+   an immediate GET returning `200` with the same order ID.
 4. Repeat the same key before/after processing: one full order and execution;
    another user's identical key must identify a different order.
-5. Verify known key/payload conflicts return 409 and queued conflict races do
-   not overwrite the first persisted purchase.
+5. Verify competing payloads under the same key yield a `409` for the losing
+   request and the queue contains only the winning purchase.
 6. Check invalid capacity/seat/event rejection, including Ticketmaster imports.
 7. Check same-seat concurrency, hold expiry, permanent sold-seat protection and
    ownership-safe compensation in real DynamoDB.

@@ -5,6 +5,7 @@ import copy
 import importlib.util
 import json
 import os
+import sys
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -12,6 +13,7 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import boto3
 from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,12 +22,15 @@ ROOT = Path(__file__).resolve().parents[1]
 def load_lambda(name):
     spec = importlib.util.spec_from_file_location(name, ROOT / "lambdas" / name / "index.py")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with patch.object(sys, "path", [str(ROOT / "lambdas"), *sys.path]):
+        spec.loader.exec_module(module)
     return module
 
 
 producer = load_lambda("create_purchase")
 worker = load_lambda("purchase_worker")
+with patch.object(boto3, "resource"):
+    get_order = load_lambda("get_order")
 ARN = "arn:aws:states:us-east-1:123456789012:stateMachine:purchase"
 OTHER_ARN = "arn:aws:states:us-east-1:123456789012:stateMachine:replacement"
 ENV = {
@@ -88,10 +93,11 @@ class PurchaseTests(unittest.TestCase):
         }
         self.env_patch = patch.dict(os.environ, ENV, clear=True)
         self.resource_patch = patch.object(producer.boto3, "resource", return_value=self.ddb)
+        order_reader_patch = patch.object(get_order, "_ddb", self.ddb)
         self.client_patch = patch.object(
             producer.boto3, "client", side_effect={"sqs": self.sqs, "stepfunctions": self.sfn}.__getitem__
         )
-        for patcher in (self.env_patch, self.resource_patch, self.client_patch):
+        for patcher in (self.env_patch, self.resource_patch, self.client_patch, order_reader_patch):
             patcher.start()
             self.addCleanup(patcher.stop)
 
@@ -114,6 +120,12 @@ class PurchaseTests(unittest.TestCase):
     def run_worker(self, *records):
         return worker.lambda_handler({"Records": list(records or [self.record()])}, None)
 
+    def lookup_order(self, order_id, user="user-1"):
+        return get_order.handler({
+            "pathParameters": {"orderId": order_id},
+            "requestContext": {"authorizer": {"jwt": {"claims": {"sub": user}}}},
+        }, None)
+
     def assert_failed(self, result, *ids):
         self.assertEqual(result, {"batchItemFailures": [{"itemIdentifier": value} for value in ids]})
 
@@ -126,6 +138,47 @@ class PurchaseTests(unittest.TestCase):
         self.assertEqual(order["orderId"], json.loads(response["body"])["orderId"])
         self.assertEqual(len(order["orderId"]), 73)
         self.assertEqual(self.sqs.send_message.call_args.kwargs["QueueUrl"], ENV["PURCHASE_QUEUE_URL"])
+
+    def test_accepted_purchase_is_immediately_readable_before_worker_runs(self):
+        purchase = producer.handler(self.request(), None)
+        order_id = json.loads(purchase["body"])["orderId"]
+        response = self.lookup_order(order_id)
+        self.assertEqual(purchase["statusCode"], 202)
+        self.assertEqual(response["statusCode"], 200)
+        self.assertEqual(json.loads(response["body"]), {
+            "orderId": order_id, "eventId": "event-1", "seatId": "1", "orderStatus": "PENDING",
+        })
+        self.sfn.start_execution.assert_not_called()
+
+    def test_order_status_preserves_workflow_states_and_public_ticket_fields(self):
+        purchase = producer.handler(self.request(), None)
+        order_id = json.loads(purchase["body"])["orderId"]
+        record = {"messageId": "m", "body": self.sqs.send_message.call_args.kwargs["MessageBody"]}
+        self.assert_failed(self.run_worker(record))
+        item = self.orders.items[order_id]
+        for status in ("RESERVED", "PAID", "FAILED", "REJECTED", "REVIEW_REQUIRED"):
+            with self.subTest(status=status):
+                item["orderStatus"] = status
+                response = self.lookup_order(order_id)
+                self.assertEqual(response["statusCode"], 200)
+                self.assertEqual(json.loads(response["body"])["orderStatus"], status)
+        item.update(orderStatus="CONFIRMED", ticketStatus="issued", qrPayload="ticket", issuedAt=Decimal(123))
+        response = self.lookup_order(order_id)
+        self.assertEqual(response["statusCode"], 200)
+        self.assertEqual(json.loads(response["body"]), {
+            "orderId": order_id, "eventId": "event-1", "seatId": "1", "orderStatus": "CONFIRMED",
+            "ticketStatus": "issued", "qrPayload": "ticket", "issuedAt": 123,
+        })
+
+    def test_order_lookup_validates_identity_and_keeps_orders_private(self):
+        purchase = producer.handler(self.request(), None)
+        order_id = json.loads(purchase["body"])["orderId"]
+        self.assertEqual(self.lookup_order("missing")["statusCode"], 404)
+        self.assertEqual(self.lookup_order(None)["statusCode"], 400)
+        self.assertEqual(self.lookup_order(order_id, user=None)["statusCode"], 401)
+        denied = self.lookup_order(order_id, user="user-2")
+        self.assertEqual(denied["statusCode"], 404)
+        self.assertEqual(json.loads(denied["body"]), {"error": "Order not found"})
 
     def test_base64_http_body(self):
         self.assertEqual(producer.handler(self.request(encoded=True), None)["statusCode"], 202)
@@ -171,12 +224,24 @@ class PurchaseTests(unittest.TestCase):
         }), None)["statusCode"], 400)
         self.sqs.send_message.assert_not_called()
 
-    def test_queue_or_database_failure_returns_retryable_response(self):
+    def test_queue_failure_leaves_pending_order_and_same_key_resends(self):
         self.sqs.send_message.side_effect = aws_error("ServiceUnavailable")
         self.assertEqual(producer.handler(self.request(), None)["statusCode"], 503)
+        original_send = self.sqs.send_message.call_args
+        order_id = json.loads(original_send.kwargs["MessageBody"])["orderId"]
+        self.assertEqual(json.loads(self.lookup_order(order_id)["body"])["orderStatus"], "PENDING")
         self.sqs.send_message.side_effect = None
-        self.events.get_item.side_effect = aws_error("AccessDeniedException")
-        self.assertEqual(producer.handler(self.request(), None)["statusCode"], 503)
+        self.events.get_item.side_effect = AssertionError("Persisted retries must not revalidate inventory")
+        response = producer.handler(self.request(), None)
+        self.assertEqual(response["statusCode"], 202)
+        self.assertEqual(json.loads(response["body"])["orderId"], order_id)
+        self.assertEqual(self.sqs.send_message.call_args, original_send)
+        self.assertEqual(len(self.orders.items), 1)
+
+    def test_order_write_failure_returns_retryable_response_without_enqueuing(self):
+        with patch.object(self.orders, "put_item", side_effect=aws_error("AccessDeniedException")):
+            self.assertEqual(producer.handler(self.request(), None)["statusCode"], 503)
+        self.sqs.send_message.assert_not_called()
 
     def test_repeated_requests_have_same_order_but_users_are_isolated(self):
         first = producer.handler(self.request(), None)
@@ -260,14 +325,29 @@ class PurchaseTests(unittest.TestCase):
         self.assertEqual(self.orders.items, original)
         self.sfn.start_execution.assert_called_once()
 
-    def test_conflicting_requests_before_worker_are_resolved_conditionally(self):
-        first = producer.handler(self.request(), None)
-        producer.handler(self.request({"eventId": "event-1", "seatId": "2", "idempotencyKey": "request-1"}), None)
-        messages = [call.kwargs["MessageBody"] for call in self.sqs.send_message.call_args_list]
-        result = self.run_worker(*[{"messageId": str(i), "body": body} for i, body in enumerate(messages)])
-        self.assert_failed(result, "1")
-        order_id = json.loads(first["body"])["orderId"]
-        self.assertEqual(self.orders.items[order_id]["seatId"], "1")
+    def test_concurrent_conflicting_requests_enqueue_only_the_winning_purchase(self):
+        barrier = threading.Barrier(2)
+        event = self.events.get_item.return_value
+
+        def load_event(**kwargs):
+            barrier.wait(timeout=5)
+            return event
+
+        def submit(seat_id):
+            return producer.handler(self.request({
+                "eventId": "event-1", "seatId": seat_id, "idempotencyKey": "request-1",
+            }), None)
+
+        self.events.get_item.side_effect = load_event
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = dict(zip(("1", "2"), pool.map(submit, ("1", "2"))))
+        self.assertCountEqual([result["statusCode"] for result in results.values()], [202, 409])
+        self.sqs.send_message.assert_called_once()
+        message = self.sqs.send_message.call_args.kwargs["MessageBody"]
+        order = json.loads(message)
+        self.assertEqual(results[order["seatId"]]["statusCode"], 202)
+        self.assertEqual(self.orders.items[order["orderId"]]["seatId"], order["seatId"])
+        self.assert_failed(self.run_worker({"messageId": "m", "body": message}))
         self.sfn.start_execution.assert_called_once()
 
     def test_unknown_or_invalid_worker_fields_are_rejected(self):

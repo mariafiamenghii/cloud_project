@@ -9,6 +9,9 @@ import re
 from decimal import Decimal
 
 import boto3
+from botocore.exceptions import ClientError
+
+from purchase_dispatch import persist_pending_order, read_order, serialize_order
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,12 @@ def handler(event, context):
         event.get("requestContext", {}).get("authorizer", {}).get("jwt", {}).get("claims", {})
     )
     user_id = claims.get("sub")
-    if not isinstance(user_id, str) or not user_id.strip() or len(user_id) > 128:
+    if (
+        not isinstance(user_id, str)
+        or not user_id.strip()
+        or user_id != user_id.strip()
+        or len(user_id) > 128
+    ):
         return _response(401, {"error": "Authentication required"})
 
     try:
@@ -62,18 +70,14 @@ def handler(event, context):
     identity = json.dumps([user_id, key], separators=(",", ":"), ensure_ascii=True)
     order_id = "purchase-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()
     order = {"orderId": order_id, "userId": user_id, "eventId": event_id, "seatId": seat_id}
+    workflow_input = serialize_order(order)
+    accepted = {"orderId": order_id, "status": "accepted"}
 
     try:
         ddb = boto3.resource("dynamodb")
-        existing = ddb.Table(os.environ["ORDERS_TABLE"]).get_item(
-            Key={"orderId": order_id}, ConsistentRead=True
-        ).get("Item")
-        if existing:
-            if any(existing.get(field) != value for field, value in order.items()):
-                return _response(409, {"error": "Idempotency key already used for another purchase"})
-            if existing.get("dispatchStatus") == "STARTED":
-                return _response(202, {"orderId": order_id, "status": "accepted"})
-        else:
+        orders = ddb.Table(os.environ["ORDERS_TABLE"])
+        existing = read_order(orders, order_id)
+        if existing is None:
             item = ddb.Table(os.environ["EVENTS_TABLE"]).get_item(
                 Key={"eventId": event_id}, ConsistentRead=True
             ).get("Item")
@@ -90,15 +94,24 @@ def handler(event, context):
                 or item.get("source") == "ticketmaster"
             ):
                 return _response(400, {"error": "Event or seat is not available for purchase"})
+            existing = persist_pending_order(orders, order, workflow_input)
 
+        if any(existing.get(field) != value for field, value in order.items()):
+            return _response(409, {"error": "Idempotency key already used for another purchase"})
+        if existing.get("dispatchStatus") == "STARTED":
+            return _response(202, accepted)
+
+        # If SQS fails, leave the pending order in place. Retrying with the same
+        # key reuses it and can resend the identical message safely.
         boto3.client("sqs").send_message(
             QueueUrl=os.environ["PURCHASE_QUEUE_URL"],
-            MessageBody=json.dumps(order, sort_keys=True, separators=(",", ":")),
+            MessageBody=workflow_input,
         )
     except Exception as exc:
-        logger.error("Purchase intake failed for %s (%s)", order_id, type(exc).__name__)
+        error = exc.response["Error"]["Code"] if isinstance(exc, ClientError) else type(exc).__name__
+        logger.error("Purchase intake failed for %s (%s)", order_id, error)
         return _response(
             503, {"error": "Purchase temporarily unavailable; retry with the same idempotencyKey"}
         )
 
-    return _response(202, {"orderId": order_id, "status": "accepted"})
+    return _response(202, accepted)
