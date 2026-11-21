@@ -165,3 +165,47 @@ export async function createEvent(
 
   return { eventId: result.eventId };
 }
+
+export type Order = {
+  orderId: string;
+  eventId?: string;
+  seatId?: string;
+  orderStatus?: string;
+  ticketStatus?: string;
+  paymentStatus?: string;
+  emailStatus?: string;
+  qrPayload?: string;
+  qrUrl?: string;
+  issuedAt?: number;
+  failureStage?: string;
+};
+
+// Retrieve an order after the purchase request is accepted.
+// A 404 is treated as temporary because SQS processes
+// purchases asynchronously.
+export async function getOrder(
+  orderId: string
+): Promise<Order | null> {
+  try {
+    const data = await apiRequest(
+      `/orders/${encodeURIComponent(orderId)}`,
+      {},
+      true
+    );
+
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid order response");
+    }
+
+    return data as Order;
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message.includes("404")
+    ) {
+      return null;
+    }
+
+    throw err;
+  }
+}
