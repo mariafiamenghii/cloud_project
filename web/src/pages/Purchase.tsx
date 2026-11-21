@@ -7,7 +7,7 @@ type Props = {
   onBack: () => void;
 };
 
-const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
+const demoMode = import.meta.env.VITE_DEMO_MODE === "";
 
 // After SQS accepts a purchase, poll the order until the workflow settles.
 // Display the QR ticket on the site because lab SES delivery is disabled.
