@@ -53,6 +53,29 @@ resource "aws_dynamodb_table" "orders" {
   }
 }
 
+# One immutable ticket per purchased unit. Strongly consistent order reads avoid
+# an eventually consistent GSI hiding just-issued tickets.
+resource "aws_dynamodb_table" "tickets" {
+  name         = "${var.prefix}-tickets"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "orderId"
+  range_key    = "ticketId"
+
+  attribute {
+    name = "orderId"
+    type = "S"
+  }
+
+  attribute {
+    name = "ticketId"
+    type = "S"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 resource "aws_dynamodb_table" "preferences" {
   name         = "${var.prefix}-preferences"
   billing_mode = "PAY_PER_REQUEST"

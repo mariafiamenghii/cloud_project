@@ -11,6 +11,9 @@ from purchase_common import (
 
 
 def handler(event, context):
+    if event.get("order", event).get("schemaVersion") == 2:
+        from quantity_workflow import compensate
+        return compensate(event)
     # Retain raw-order compatibility for controlled compensation tests.
     order = event.get("order", event)
     stage = event.get("failureStage", "PAYMENT")

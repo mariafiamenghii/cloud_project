@@ -13,6 +13,9 @@ class SeatUnavailable(Exception):
 
 
 def handler(event, context):
+    if event.get("schemaVersion") == 2:
+        from quantity_workflow import reserve
+        return reserve(event)
     client, saved = load_order(event)
     now = int(time.time())
     if saved.get("paymentStatus") == "paid":
@@ -29,7 +32,7 @@ def handler(event, context):
     if (isinstance(capacity, bool) or not isinstance(capacity, (int, Decimal)) or
             (isinstance(capacity, Decimal) and not capacity.is_finite()) or
             capacity != int(capacity) or int(event["seatId"]) > capacity or capacity <= 0 or
-            item.get("source") == "ticketmaster"):
+            item.get("source") == "ticketmaster" or item.get("inventoryVersion") == 2):
         raise SeatUnavailable("Event or seat is not sellable")
     expires = now + int(os.environ.get("HOLD_SECONDS", "900"))
     if expires <= now:
@@ -39,7 +42,7 @@ def handler(event, context):
         client.transact_write_items(TransactItems=[
             {"ConditionCheck": {
                 "TableName": os.environ["EVENTS_TABLE"], "Key": encode({"eventId": event["eventId"]}),
-                "ConditionExpression": "#capacity = :capacity AND (attribute_not_exists(#source) OR #source <> :external)",
+                "ConditionExpression": "#capacity = :capacity AND attribute_not_exists(inventoryVersion) AND (attribute_not_exists(#source) OR #source <> :external)",
                 "ExpressionAttributeNames": {"#capacity": "capacity", "#source": "source"},
                 "ExpressionAttributeValues": encode({":capacity": capacity, ":external": "ticketmaster"}),
             }},

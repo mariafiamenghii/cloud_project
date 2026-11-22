@@ -12,6 +12,10 @@ data "archive_file" "reserve_seat" {
     content  = file("${path.module}/../lambdas/workflow_common/purchase_common.py")
     filename = "purchase_common.py"
   }
+  source {
+    content  = file("${path.module}/../lambdas/workflow_common/quantity_workflow.py")
+    filename = "quantity_workflow.py"
+  }
   output_path = "${path.module}/reserve_seat.zip"
 }
 
@@ -44,6 +48,10 @@ data "archive_file" "take_payment" {
     content  = file("${path.module}/../lambdas/workflow_common/purchase_common.py")
     filename = "purchase_common.py"
   }
+  source {
+    content  = file("${path.module}/../lambdas/workflow_common/quantity_workflow.py")
+    filename = "quantity_workflow.py"
+  }
   output_path = "${path.module}/take_payment.zip"
 }
 
@@ -74,6 +82,10 @@ data "archive_file" "generate_ticket" {
     content  = file("${path.module}/../lambdas/workflow_common/purchase_common.py")
     filename = "purchase_common.py"
   }
+  source {
+    content  = file("${path.module}/../lambdas/workflow_common/quantity_workflow.py")
+    filename = "quantity_workflow.py"
+  }
   output_path = "${path.module}/generate_ticket.zip"
 }
 
@@ -88,8 +100,10 @@ resource "aws_lambda_function" "generate_ticket" {
 
   environment {
     variables = {
-      ORDERS_TABLE = aws_dynamodb_table.orders.name
-      SEATS_TABLE  = aws_dynamodb_table.seats.name
+      ORDERS_TABLE  = aws_dynamodb_table.orders.name
+      SEATS_TABLE   = aws_dynamodb_table.seats.name
+      EVENTS_TABLE  = aws_dynamodb_table.events.name
+      TICKETS_TABLE = aws_dynamodb_table.tickets.name
     }
   }
 }
@@ -103,6 +117,10 @@ data "archive_file" "send_email" {
   source {
     content  = file("${path.module}/../lambdas/workflow_common/purchase_common.py")
     filename = "purchase_common.py"
+  }
+  source {
+    content  = file("${path.module}/../lambdas/workflow_common/quantity_workflow.py")
+    filename = "quantity_workflow.py"
   }
   output_path = "${path.module}/send_email.zip"
 }
@@ -134,6 +152,10 @@ data "archive_file" "release_seat" {
     content  = file("${path.module}/../lambdas/workflow_common/purchase_common.py")
     filename = "purchase_common.py"
   }
+  source {
+    content  = file("${path.module}/../lambdas/workflow_common/quantity_workflow.py")
+    filename = "quantity_workflow.py"
+  }
   output_path = "${path.module}/release_seat.zip"
 }
 
@@ -149,6 +171,7 @@ resource "aws_lambda_function" "release_seat" {
   environment {
     variables = {
       SEATS_TABLE  = aws_dynamodb_table.seats.name
+      EVENTS_TABLE = aws_dynamodb_table.events.name
       ORDERS_TABLE = aws_dynamodb_table.orders.name
     }
   }
@@ -305,7 +328,8 @@ resource "aws_lambda_function" "get_order" {
 
   environment {
     variables = {
-      ORDERS_TABLE = aws_dynamodb_table.orders.name
+      ORDERS_TABLE  = aws_dynamodb_table.orders.name
+      TICKETS_TABLE = aws_dynamodb_table.tickets.name
     }
   }
 }

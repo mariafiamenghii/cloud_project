@@ -20,6 +20,9 @@ def _existing(event, client, saved):
 
 
 def handler(event, context):
+    if event.get("schemaVersion") == 2:
+        from quantity_workflow import issue
+        return issue(event)
     client, saved = load_order(event)
     if saved.get("ticketStatus") == "issued":
         return _existing(event, client, saved)

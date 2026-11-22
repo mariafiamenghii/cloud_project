@@ -30,13 +30,14 @@ data "archive_file" "create_event" {
 }
 
 resource "aws_lambda_function" "create_event" {
-  function_name    = "${var.prefix}-create-event"
-  role             = data.aws_iam_role.lab.arn
-  runtime          = "python3.12"
-  handler          = "index.handler"
-  filename         = data.archive_file.create_event.output_path
-  source_code_hash = data.archive_file.create_event.output_base64sha256
-  timeout          = 10
+  reserved_concurrent_executions = var.purchases_enabled ? -1 : 0
+  function_name                  = "${var.prefix}-create-event"
+  role                           = data.aws_iam_role.lab.arn
+  runtime                        = "python3.12"
+  handler                        = "index.handler"
+  filename                       = data.archive_file.create_event.output_path
+  source_code_hash               = data.archive_file.create_event.output_base64sha256
+  timeout                        = 10
 
   environment {
     variables = {
@@ -56,6 +57,12 @@ resource "aws_apigatewayv2_integration" "list_events" {
 resource "aws_apigatewayv2_route" "list_events" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "GET /events"
+  target    = "integrations/${aws_apigatewayv2_integration.list_events.id}"
+}
+
+resource "aws_apigatewayv2_route" "event_inventory" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /events/{eventId}/inventory"
   target    = "integrations/${aws_apigatewayv2_integration.list_events.id}"
 }
 

@@ -120,6 +120,7 @@ function normalizeEvent(value: unknown): Event {
       numericCapacity >= 0
         ? numericCapacity
         : undefined,
+    available: typeof record.available === "number" && Number.isSafeInteger(record.available) && record.available >= 0 ? record.available : undefined,
   };
 }
 

@@ -17,6 +17,9 @@ def _result(event, saved):
 
 
 def handler(event, context):
+    if event.get("schemaVersion") == 2:
+        from quantity_workflow import pay
+        return pay(event)
     client, saved = load_order(event)
     if saved.get("paymentStatus") == "paid":
         return _result(event, saved)

@@ -32,6 +32,10 @@ _PUBLIC_FIELDS = (
     "qrUrl",
     "issuedAt",
     "failureStage",
+    "quantity",
+    "schemaVersion",
+    "unitPrice",
+    "totalPrice",
 )
 
 
@@ -71,4 +75,13 @@ def handler(event, context):
         return _response(404, {"error": "Order not found"})
 
     body = {field: _plain(item[field]) for field in _PUBLIC_FIELDS if field in item}
+    if item.get("schemaVersion") == 2 and item.get("orderStatus") == "CONFIRMED":
+        from boto3.dynamodb.conditions import Key
+        tickets = _ddb.Table(os.environ["TICKETS_TABLE"]).query(
+            KeyConditionExpression=Key("orderId").eq(order_id), ConsistentRead=True,
+        )["Items"]
+        if len(tickets) != item["quantity"]:
+            return _response(503, {"error": "Ticket records require reconciliation"})
+        public = ("ticketId", "qrPayload", "qrUrl", "issuedAt", "ticketNumber")
+        body["tickets"] = [{k: _plain(t[k]) for k in public if k in t} for t in sorted(tickets, key=lambda t: t["ticketNumber"])]
     return _response(200, body)

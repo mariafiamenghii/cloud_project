@@ -241,7 +241,7 @@ export default function ArtistDashboard() {
 
           <div className="artist-field">
             <label htmlFor="event-capacity">
-              Number of Seats *
+              Number of Tickets *
             </label>
             <input
               id="event-capacity"
