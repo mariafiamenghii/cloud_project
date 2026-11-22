@@ -1,5 +1,6 @@
 
 import { fetchAuthSession } from "aws-amplify/auth";
+import { isMissingOrder, readApiResponse } from "./http";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -34,13 +35,7 @@ export async function apiRequest(
     { ...options, headers }
   );
 
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
-  }
-
-  if (response.status === 204) return null;
-
-  return response.json();
+  return readApiResponse(response);
 }
 
 // EVENTS
@@ -154,9 +149,8 @@ export type Order = {
 
 // Retrieve the authenticated user's order.
 //
-// A 404 returns null because the purchase worker may not
-// have created the DynamoDB order immediately after SQS
-// accepts the purchase request.
+// Only the order Lambda's explicit missing-order response is retryable.
+// API Gateway's missing-route 404 must remain an actionable read error.
 //
 // Purchase.tsx polls this endpoint until the order is
 // CONFIRMED, FAILED, REJECTED or REVIEW_REQUIRED.
@@ -171,16 +165,13 @@ export async function getOrder(
       true
     );
 
-    if (!data || typeof data !== "object") {
+    if (!data || typeof data !== "object" || !("orderId" in data) || data.orderId !== orderId) {
       throw new Error("Invalid order response");
     }
 
     return data as Order;
   } catch (err) {
-    if (
-      err instanceof Error &&
-      err.message.includes("404")
-    ) {
+    if (isMissingOrder(err)) {
       return null;
     }
 
