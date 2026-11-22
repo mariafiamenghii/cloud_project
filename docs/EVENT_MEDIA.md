@@ -47,6 +47,17 @@ remove the canonical object. Failed cleanup leaves only a private orphan, never
 a public image. No new IAM grants are introduced; Academy's existing LabRole is
 reused.
 
+Academy permits S3 creation and normal object access but denies
+`GetBucketObjectLockConfiguration` through its organization policy. The standard
+Terraform bucket resource reads this unconditionally. The new bucket was retained
+with a declarative `removed` block (`destroy=false`) and is referenced through a
+HeadBucket-based data source. All five bucket security/configuration resources
+remain Terraform-managed. Nothing was deleted or recreated. This exception is
+limited to this new base bucket; existing infrastructure ownership is unchanged.
+If a lab reset removes it, run `python3.12 scripts/ensure_image_bucket.py` before
+planning/applying Terraform. The helper creates only a missing private bucket and
+never deletes one. Terraform 1.7+ is required for the explicit retention block.
+
 The image-validation layer is built reproducibly with:
 
 ```sh
@@ -98,16 +109,24 @@ Official API dry run on 22 November 2026: 272 existing imports inspected,
 Search and detail responses supplied no prices for these existing Spanish
 listings. No prices were invented and no existing values were cleared.
 
+The approved backfill subsequently applied **262 image updates**, with **zero
+conflicts**. It verified **30 historical orders**, **21 issued ticket records**,
+**14 internal event records**, and all **272 imported event IDs, links, inventory
+and other non-media fields** unchanged. Ten imports were retained without a new
+image; no official prices were available. These counts precede new live test
+fixtures and do not include them.
+
 The user approved the reviewed plan: **12 additions, one event-creation Lambda
 update, zero deletions**. No purchase Lambda, SQS mapping, Step Functions, orders,
 tickets or inventory resources are changed. Recommendations only gains an archive
 cache exclusion; its deployed package should remain unchanged.
 
-Initial deployment was blocked before creating resources: both s3:CreateBucket
-and lambda:PublishLayerVersion were denied by Academy's `voc-cancel-cred` policy.
-Resume the lab and refresh local CLI credentials before retrying. Approval has
-already been granted; refresh/review the plan with the restored credentials.
-Do not merge an upload-enabled frontend until its backend is deployed.
+An initial attempt was blocked before creating resources by Academy's
+`voc-cancel-cred` policy. The user resumed the lab and refreshed local credentials.
+The layer and bucket were then created, followed by the retained-bucket workaround
+above and the remaining ten resources. Backend deployment completed with one
+event-creation Lambda update and no resource deletion. No purchase Lambda was
+updated.
 
 `scripts/test_event_media_live.py` is the explicit live verification script. It
 creates isolated test accounts/events, exercises direct S3 uploads and stable
@@ -115,15 +134,31 @@ image reads, verifies Catalan preferences/recommendations, then buys one and fou
 tickets on a new test event and checks five unique tickets and inventory 95.
 It disables its test accounts afterwards. Existing data is never overwritten.
 
+The live script passed on 22 November 2026. Published image fixtures:
+`2ca869e5-de1d-4a87-ba5f-87b51b43f5c3` (JPEG),
+`7bea8038-8cda-4bea-8ac5-45d6c597a97a` (PNG), and
+`83f91453-7afb-4a93-a0ca-b5e1b28f09cb` (WebP). All served canonical WebP images
+through the stable API endpoint, while direct anonymous S3 reads returned 403.
+Unauthenticated/fan uploads, unsupported types, oversized authorization,
+cross-artist attachment and arbitrary external references were rejected. Optional
+image creation and Catalan preference/recommendation matching passed. Both test
+accounts were disabled afterwards.
+
+Purchases on the first fixture confirmed quantities one and four, producing five
+distinct ticket IDs. Orders:
+`purchase-06ec1c6c42a69f60cf48f6cba95cfffab3c4a65b46da95e4c9a0c7a429986db5` and
+`purchase-787cffc4316045111e913bd6e350f7df176907587482974b765f3ea850f40e57`.
+Final fixture inventory: sold 5, reserved 0, available 95.
+
 ## Changed files
 
 - `.github/workflows/terraform-ci.yml`
-- `infra/images.tf`, `infra/events_api.tf`, `infra/recommendations.tf`
+- `infra/images.tf`, `infra/events_api.tf`, `infra/recommendations.tf`, `infra/providers.tf`
 - `lambdas/event_images/index.py`, `lambdas/create_event/index.py`,
   `lambdas/create_event/image_validation.py`
 - `scripts/import_ticketmaster.py`, `scripts/ticketmaster_media.py`,
   `scripts/build_image_layer.py`, `scripts/image-requirements.txt`,
-  `scripts/test_event_media_live.py`
+  `scripts/test_event_media_live.py`, `scripts/ensure_image_bucket.py`
 - `tests/test_event_media.py`, `tests/requirements.txt`
 - `web/src/components/EventCard.tsx`, `web/src/pages/ArtistDashboard.tsx`,
   `web/src/pages/Home.tsx`, `web/src/pages/Recommendations.tsx`,

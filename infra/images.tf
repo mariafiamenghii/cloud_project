@@ -1,12 +1,19 @@
 # Raw uploads and validated images remain private. Only associated event images
 # are served by the read Lambda; no public bucket policy or extra IAM grants.
-resource "aws_s3_bucket" "event_images" {
+# Academy denies GetBucketObjectLockConfiguration, which aws_s3_bucket always
+# reads. Retain the already-created bucket and discover it through HeadBucket.
+# Security/configuration resources below remain fully Terraform-managed.
+removed {
+  from = aws_s3_bucket.event_images
+  lifecycle { destroy = false }
+}
+
+data "aws_s3_bucket" "event_images" {
   bucket = "${var.prefix}-event-images-${data.aws_caller_identity.me.account_id}"
-  lifecycle { prevent_destroy = true }
 }
 
 resource "aws_s3_bucket_public_access_block" "event_images" {
-  bucket                  = aws_s3_bucket.event_images.id
+  bucket                  = data.aws_s3_bucket.event_images.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -14,19 +21,19 @@ resource "aws_s3_bucket_public_access_block" "event_images" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "event_images" {
-  bucket = aws_s3_bucket.event_images.id
+  bucket = data.aws_s3_bucket.event_images.id
   rule { object_ownership = "BucketOwnerEnforced" }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "event_images" {
-  bucket = aws_s3_bucket.event_images.id
+  bucket = data.aws_s3_bucket.event_images.id
   rule {
     apply_server_side_encryption_by_default { sse_algorithm = "AES256" }
   }
 }
 
 resource "aws_s3_bucket_cors_configuration" "event_images" {
-  bucket = aws_s3_bucket.event_images.id
+  bucket = data.aws_s3_bucket.event_images.id
   cors_rule {
     allowed_origins = ["https://main.${aws_amplify_app.frontend.default_domain}"]
     allowed_methods = ["POST"]
@@ -36,7 +43,7 @@ resource "aws_s3_bucket_cors_configuration" "event_images" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "event_images" {
-  bucket = aws_s3_bucket.event_images.id
+  bucket = data.aws_s3_bucket.event_images.id
   rule {
     id     = "expire-unpublished-uploads"
     status = "Enabled"
@@ -72,7 +79,7 @@ resource "aws_lambda_function" "event_images" {
   environment {
     variables = {
       EVENTS_TABLE  = aws_dynamodb_table.events.name
-      IMAGES_BUCKET = aws_s3_bucket.event_images.id
+      IMAGES_BUCKET = data.aws_s3_bucket.event_images.id
     }
   }
 }

@@ -45,7 +45,7 @@ resource "aws_lambda_function" "create_event" {
   environment {
     variables = {
       EVENTS_TABLE   = aws_dynamodb_table.events.name
-      IMAGES_BUCKET  = aws_s3_bucket.event_images.id
+      IMAGES_BUCKET  = data.aws_s3_bucket.event_images.id
       PUBLIC_API_URL = aws_apigatewayv2_api.http.api_endpoint
     }
   }

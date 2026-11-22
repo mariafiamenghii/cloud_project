@@ -72,12 +72,18 @@ def main():
             assert api(args.api, "/events", tokens[1], body)[0] == 400
             status, result = api(args.api, "/events", tokens[0], body); assert status == 201, (status, result)
             event_id = result["eventId"]; event_ids.append(event_id)
+            try:
+                urllib.request.urlopen(auth["url"].rstrip("/") + "/published/" + event_id + ".webp")
+                raise AssertionError("Published S3 object must not be anonymously readable")
+            except urllib.error.HTTPError as error:
+                assert error.code == 403
             url = args.api + "/event-images/" + event_id
             for _ in range(2):
                 with urllib.request.urlopen(url) as response:
                     assert response.headers.get_content_type() == "image/webp"
                     with Image.open(io.BytesIO(response.read())) as verified: assert verified.format == "WEBP"
         assert api(args.api, "/events", tokens[0], {**event_body("Invalid external image"), "imageUrl": "https://arbitrary.example/a.jpg"})[0] == 400
+        assert api(args.api, "/event-images/unassociated-test-image")[0] == 404
         status, result = api(args.api, "/events", tokens[0], event_body("Optional image")); assert status == 201
         report["optionalImageEventId"] = result["eventId"]
         status, events = api(args.api, "/events"); assert status == 200
