@@ -249,3 +249,35 @@ export async function getMyOrders(): Promise<Order[]> {
 
   return data.orders as Order[];
 }
+
+// ARTIST SALES: sales summary of the events created by the logged-in artist.
+export type EventSales = {
+  eventId: string;
+  name?: string;
+  artist?: string;
+  city?: string;
+  venue?: string;
+  date?: string;
+  price?: number;
+  capacity: number;
+  sold: number;
+  reserved: number;
+  available: number;
+  revenue: number;
+  soldOut: boolean;
+};
+
+export async function getMyEvents(): Promise<EventSales[]> {
+  const data = await apiRequest("/my-events", {}, true);
+
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("events" in data) ||
+    !Array.isArray(data.events)
+  ) {
+    throw new Error("Invalid sales response");
+  }
+
+  return data.events as EventSales[];
+}
