@@ -14,6 +14,7 @@ import Recommendations from "./pages/Recommendations";
 import Purchase from "./pages/Purchase";
 import ArtistDashboard from "./pages/ArtistDashboard";
 import MyTickets from "./pages/MyTickets";
+import ArtistSales from "./pages/ArtistSales";
 
 import type { Event } from "./components/EventCard";
 import "./App.css";
@@ -31,7 +32,8 @@ type Page =
   | "recommendations"
   | "mytickets"
   | "purchase"
-  | "artist";
+  | "artist"
+  | "sales";
 
 type PageContentProps = {
   page: Page;
@@ -65,6 +67,17 @@ function PageContent({
         <main className="container">
           <p role="alert">
             Only approved artists and admins can publish events.
+          </p>
+        </main>
+      );
+
+    case "sales":
+      return canPublish ? (
+        <ArtistSales />
+      ) : (
+        <main className="container">
+          <p role="alert">
+            Only approved artists and admins can see sales.
           </p>
         </main>
       );
@@ -114,6 +127,12 @@ function Navigation({ canPublish, navigate }: NavigationProps) {
       {canPublish && (
         <button type="button" onClick={() => navigate("artist")}>
           Artist Dashboard
+        </button>
+      )}
+
+      {canPublish && (
+        <button type="button" onClick={() => navigate("sales")}>
+          Sales
         </button>
       )}
     </nav>
@@ -253,6 +272,7 @@ export default function App() {
         page === "recommendations" ||
         page === "mytickets" ||
         page === "artist" ||
+        page === "sales" ||
         page === "purchase")
     ) {
       setShowLogin(true);
