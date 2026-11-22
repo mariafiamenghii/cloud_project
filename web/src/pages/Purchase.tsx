@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Event } from "../components/EventCard";
 import { createPurchase, getOrder, type Order } from "../services/api";
+import { ApiError } from "../services/http";
 
 type Props = {
   event: Event;
   onBack: () => void;
 };
 
-const demoMode = import.meta.env.VITE_DEMO_MODE === "";
+const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 // After SQS accepts a purchase, poll the order until the workflow settles.
 // Display the QR ticket on the site because lab SES delivery is disabled.
@@ -23,6 +24,9 @@ export default function Purchase({ event, onBack }: Props) {
   const [orderId, setOrderId] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
   const [polling, setPolling] = useState(false);
+  const [pollError, setPollError] = useState("");
+  const [pollRun, setPollRun] = useState(0);
+  const [qrFailed, setQrFailed] = useState(false);
   const purchaseKey = useRef(crypto.randomUUID());
 
   const capacity = event.capacity ?? 0;
@@ -43,6 +47,8 @@ export default function Purchase({ event, onBack }: Props) {
     setOrder(null);
     setOrderId("");
     setPolling(false);
+    setPollError("");
+    setQrFailed(false);
     purchaseKey.current = crypto.randomUUID();
   }
 
@@ -58,6 +64,7 @@ export default function Purchase({ event, onBack }: Props) {
       try {
         const latest = await getOrder(orderId);
         if (cancelled) return;
+        setPollError("");
         if (latest) {
           setOrder(latest);
           if (
@@ -68,8 +75,13 @@ export default function Purchase({ event, onBack }: Props) {
             return;
           }
         }
-      } catch {
-        // A transient read failure must not be treated as a failed purchase.
+      } catch (err) {
+        if (cancelled) return;
+        setPollError(err instanceof Error ? err.message : "Unable to read order status.");
+        if (err instanceof ApiError && [400, 401, 403, 404].includes(err.status)) {
+          setPolling(false);
+          return;
+        }
       }
 
       if (cancelled) return;
@@ -85,7 +97,7 @@ export default function Purchase({ event, onBack }: Props) {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [orderId, settled]);
+  }, [orderId, settled, pollRun]);
 
   async function handlePurchase() {
     if (!validSeat || loading || orderId) return;
@@ -204,10 +216,17 @@ export default function Purchase({ event, onBack }: Props) {
             <p>Order reference:</p>
             <code>{orderId}</code>
             {!polling && (
-              <p role="alert">
-                This is taking longer than expected. Keep your order reference and check
-                My Tickets later. The purchase outcome is not yet confirmed.
-              </p>
+              <>
+                <p role="alert">
+                  {pollError ? `Unable to check your order: ${pollError}. ` : "This is taking longer than expected. "}
+                  Keep your order reference. The purchase outcome is not yet confirmed.
+                </p>
+                <button type="button" className="purchase-back" onClick={() => {
+                  setPollError("");
+                  setPolling(true);
+                  setPollRun((run) => run + 1);
+                }}>Check order status again</button>
+              </>
             )}
           </div>
         )}
@@ -219,15 +238,17 @@ export default function Purchase({ event, onBack }: Props) {
               Email delivery is disabled in this environment
               {order.emailStatus === "not_sent" ? " (not sent)" : ""}, so here is your ticket:
             </p>
-            {order.qrUrl && (
+            {(order.qrUrl || order.qrPayload) && !qrFailed && (
               <img
                 className="ticket-qr"
-                src={order.qrUrl}
+                src={order.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(order.qrPayload!)}`}
+                onError={() => setQrFailed(true)}
                 alt="Your ticket QR code"
                 width={200}
                 height={200}
               />
             )}
+            {qrFailed && <p role="alert">The QR image could not load. Keep the ticket code below and try again later.</p>}
             <div className="ticket-details">
               <p>Event: {event.name}</p>
               <p>Seat: {order.seatId}</p>

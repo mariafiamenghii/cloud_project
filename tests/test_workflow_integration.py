@@ -384,7 +384,8 @@ class WorkflowDefinitionTests(unittest.TestCase):
         # This temp configuration has no providers, backend, AWS calls or state.
         config = (ROOT / "infra" / "workflow.tf").read_text()
         retry = re.search(r"locals \{(.*?)\n\}", config, re.S).group(1)
-        definition = config.split("  definition = ", 1)[1].rsplit("\n}", 1)[0].strip()
+        # Stop at this resource's closing brace; GET-order resources follow it.
+        definition = config.split("  definition = ", 1)[1].split("\n}", 1)[0].strip()
         definition = re.sub(
             r"aws_lambda_function\.([a-z_]+)\.arn",
             lambda match: json.dumps("arn:aws:lambda:us-east-1:123456789012:function:" + match[1]),
