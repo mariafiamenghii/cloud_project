@@ -114,7 +114,7 @@ export function savePreferences(
 
 export function createPurchase(
   eventId: string,
-  seatId: string,
+  quantity: number,
   idempotencyKey: string
 ) {
   return apiRequest(
@@ -123,7 +123,7 @@ export function createPurchase(
       method: "POST",
       body: JSON.stringify({
         eventId,
-        seatId,
+        quantity,
         idempotencyKey,
       }),
     },
@@ -145,7 +145,39 @@ export type Order = {
   qrUrl?: string;
   issuedAt?: number;
   failureStage?: string;
+  schemaVersion?: number;
+  quantity?: number;
+  unitPrice?: number;
+  totalPrice?: number;
+  tickets?: Ticket[];
 };
+
+export type Ticket = {
+  ticketId: string;
+  qrPayload: string;
+  qrUrl?: string;
+  issuedAt?: number;
+  ticketNumber?: number;
+};
+
+export type Inventory = {
+  eventId: string;
+  capacity: number;
+  available: number;
+  sold: number;
+  reserved: number;
+  inventoryVersion: number;
+  maxPurchaseQuantity: number;
+  price: number;
+};
+
+export async function getInventory(eventId: string): Promise<Inventory> {
+  const result = await apiRequest(`/events/${encodeURIComponent(eventId)}/inventory`) as Inventory;
+  if (result.eventId !== eventId || result.inventoryVersion !== 2 || !Number.isSafeInteger(result.available) || result.available < 0) {
+    throw new Error("Inventory is not available yet");
+  }
+  return result;
+}
 
 // Retrieve the authenticated user's order.
 //

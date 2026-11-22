@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 def handler(event, context):
+    if event.get("schemaVersion") == 2:
+        from quantity_workflow import notify
+        return notify(event)
     client, saved = load_order(event)
     if saved.get("orderStatus") != "CONFIRMED" or saved.get("ticketStatus") != "issued":
         raise OrderMismatch("Only a confirmed purchase can be emailed")

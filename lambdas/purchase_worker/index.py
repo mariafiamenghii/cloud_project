@@ -19,9 +19,14 @@ MAX_PENDING_AGE = 89 * 24 * 60 * 60
 
 def _process(record):
     order = json.loads(record["body"])
-    if not isinstance(order, dict) or set(order) != set(REQUIRED_FIELDS):
-        raise ValueError("Order must contain exactly the four purchase fields")
-    for field in REQUIRED_FIELDS:
+    quantity_order = isinstance(order, dict) and order.get("schemaVersion") == 2
+    fields = ("orderId", "userId", "eventId") if quantity_order else REQUIRED_FIELDS
+    expected = {*fields, "quantity", "schemaVersion"} if quantity_order else set(REQUIRED_FIELDS)
+    if not isinstance(order, dict) or set(order) != expected:
+        raise ValueError("Invalid versioned purchase fields")
+    if quantity_order and (type(order["quantity"]) is not int or not 1 <= order["quantity"] <= 20):
+        raise ValueError("Invalid ticket quantity")
+    for field in fields:
         value = order[field]
         if (
             not isinstance(value, str)
@@ -32,7 +37,7 @@ def _process(record):
             raise ValueError(f"Invalid {field}")
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", order["orderId"]):
         raise ValueError("orderId must be a valid execution name")
-    if not re.fullmatch(r"[1-9][0-9]{0,9}", order["seatId"]):
+    if not quantity_order and not re.fullmatch(r"[1-9][0-9]{0,9}", order["seatId"]):
         raise ValueError("seatId must be a canonical positive integer string")
 
     workflow_input = serialize_order(order)
@@ -45,7 +50,7 @@ def _process(record):
     if (
         item.get("requestFingerprint") != fingerprint
         or item.get("workflowInput") != workflow_input
-        or any(item.get(field) != order[field] for field in REQUIRED_FIELDS)
+        or any(item.get(field) != order[field] for field in expected)
     ):
         raise ValueError("Order identity conflicts with the persisted purchase")
 

@@ -11,6 +11,7 @@ export type Event = {
   source?: string;
   externalUrl?: string;
   capacity?: number;
+  available?: number;
 };
 
 type Props = {
@@ -24,7 +25,7 @@ export default function EventCard({ event, onBuy }: Props) {
   // Only internal events with positive capacity can be purchased.
   const canPurchase =
     !isTicketmaster &&
-    (event.capacity ?? 0) > 0;
+    (event.capacity ?? 0) > 0 && event.available !== 0;
 
   return (
     <article className="event-card">
@@ -50,6 +51,9 @@ export default function EventCard({ event, onBuy }: Props) {
             ? `From €${event.price}`
             : "Price unavailable"}
         </strong>
+        {!isTicketmaster && event.available !== undefined && (
+          <p>{event.available === 0 ? "Sold out" : `${event.available} tickets remaining`}</p>
+        )}
 
         {isTicketmaster ? (
           event.externalUrl ? (
@@ -74,7 +78,7 @@ export default function EventCard({ event, onBuy }: Props) {
           >
             {canPurchase
               ? "Buy Tickets"
-              : "Tickets unavailable"}
+              : event.available === 0 ? "Sold out" : "Tickets unavailable"}
           </button>
         )}
       </div>

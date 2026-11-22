@@ -4,6 +4,12 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "purchases_enabled" {
+  description = "Pause purchase intake during a reviewed inventory migration."
+  type        = bool
+  default     = true
+}
+
 variable "prefix" {
   description = "Prefix for every resource name"
   type        = string

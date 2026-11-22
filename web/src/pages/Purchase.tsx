@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { Event } from "../components/EventCard";
-import { createPurchase, getOrder, type Order } from "../services/api";
+import { createPurchase, getOrder, getInventory, type Inventory, type Order } from "../services/api";
 import { ApiError } from "../services/http";
+import { issuedTickets, validTicketQuantity } from "../utils/tickets";
+import TicketList from "../components/TicketList";
 
 type Props = {
   event: Event;
@@ -18,7 +20,7 @@ const CONFIRMED = "CONFIRMED";
 const FAILED_STATES = ["FAILED", "REJECTED", "REVIEW_REQUIRED"];
 
 export default function Purchase({ event, onBack }: Props) {
-  const [seatId, setSeatId] = useState("1");
+  const [quantityText, setQuantityText] = useState("1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [orderId, setOrderId] = useState("");
@@ -26,29 +28,47 @@ export default function Purchase({ event, onBack }: Props) {
   const [polling, setPolling] = useState(false);
   const [pollError, setPollError] = useState("");
   const [pollRun, setPollRun] = useState(0);
-  const [qrFailed, setQrFailed] = useState(false);
+  const [inventory, setInventory] = useState<Inventory | null>(null);
+  const [inventoryError, setInventoryError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const purchaseKey = useRef(crypto.randomUUID());
 
-  const capacity = event.capacity ?? 0;
-  const seatNumber = Number(seatId);
-  const validSeat =
-    Number.isSafeInteger(seatNumber) &&
-    seatNumber >= 1 &&
-    seatNumber <= capacity &&
-    String(seatNumber) === seatId;
+  const capacity = inventory?.capacity ?? event.capacity ?? 0;
+  const quantity = Number(quantityText);
+  const limit = Math.min(20, inventory?.maxPurchaseQuantity ?? 20, capacity,
+    submitted ? capacity : inventory?.available ?? (demoMode ? capacity : 0));
+  const validQuantity = validTicketQuantity(quantityText, limit);
+  const unitPrice = inventory?.price ?? event.price;
+  const tickets = order ? issuedTickets(order) : [];
+
+  useEffect(() => {
+    if (demoMode || orderId) return;
+    let cancelled = false;
+    async function refreshInventory() {
+      try {
+        const latest = await getInventory(event.id);
+        if (!cancelled) { setInventory(latest); setInventoryError(""); }
+      } catch (err) {
+        if (!cancelled) setInventoryError(err instanceof Error ? err.message : "Unable to check availability");
+      }
+    }
+    void refreshInventory();
+    const timer = window.setInterval(() => void refreshInventory(), 10000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [event.id, orderId]);
 
   const confirmed = order?.orderStatus === CONFIRMED;
   const failed = order ? FAILED_STATES.includes(order.orderStatus ?? "") : false;
   const settled = confirmed || failed;
 
-  function changeSeat(value: string) {
-    setSeatId(value);
+  function changeQuantity(value: string) {
+    setQuantityText(value);
+    setSubmitted(false);
     setError("");
     setOrder(null);
     setOrderId("");
     setPolling(false);
     setPollError("");
-    setQrFailed(false);
     purchaseKey.current = crypto.randomUUID();
   }
 
@@ -100,7 +120,7 @@ export default function Purchase({ event, onBack }: Props) {
   }, [orderId, settled, pollRun]);
 
   async function handlePurchase() {
-    if (!validSeat || loading || orderId) return;
+    if (!validQuantity || loading || orderId) return;
     setLoading(true);
     setError("");
 
@@ -108,26 +128,19 @@ export default function Purchase({ event, onBack }: Props) {
       if (demoMode) {
         const issuedAt = Math.floor(Date.now() / 1000);
         const demoOrderId = `demo-${purchaseKey.current}`;
-        const payload = `TICKET|${demoOrderId}|${event.id}|${seatId}|${issuedAt}`;
-        setOrderId(demoOrderId);
-        setOrder({
-          orderId: demoOrderId,
-          eventId: event.id,
-          seatId,
-          orderStatus: CONFIRMED,
-          ticketStatus: "issued",
-          paymentStatus: "paid",
-          emailStatus: "not_sent",
-          qrPayload: payload,
-          qrUrl:
-            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" +
-            encodeURIComponent(payload),
-          issuedAt,
+        const demoTickets = Array.from({ length: quantity }, (_, index) => {
+          const ticketId = `${demoOrderId}-${index + 1}`;
+          return { ticketId, qrPayload: `DEMO|${ticketId}|${event.id}|${issuedAt}` };
         });
+        setOrderId(demoOrderId);
+        setOrder({ orderId: demoOrderId, eventId: event.id, quantity, schemaVersion: 2,
+          orderStatus: CONFIRMED, ticketStatus: "issued", paymentStatus: "paid",
+          emailStatus: "not_sent", tickets: demoTickets, unitPrice, totalPrice: (unitPrice ?? 0) * quantity });
         return;
       }
 
-      const response = await createPurchase(event.id, seatId, purchaseKey.current);
+      setSubmitted(true);
+      const response = await createPurchase(event.id, quantity, purchaseKey.current);
       if (
         !response ||
         typeof response !== "object" ||
@@ -168,32 +181,36 @@ export default function Purchase({ event, onBack }: Props) {
 
         {!orderId && (
           <>
-            <h3>Select your seat</h3>
-            <p>Available seat numbers: 1 to {capacity}</p>
-            <label htmlFor="seat-id">Seat number</label>
+            <h3>Select number of tickets</h3>
+            <p>Total capacity: {capacity} tickets</p>
+            <p>{inventory ? `${inventory.available} tickets remaining` : demoMode ? `${capacity} tickets available (demo)` : "Checking availability…"}</p>
+            {inventoryError && <p role="alert">{inventoryError}</p>}
+            <label htmlFor="ticket-quantity">Ticket quantity</label>
             <input
-              id="seat-id"
+              id="ticket-quantity"
               type="number"
               min="1"
-              max={capacity}
+              max={limit}
               step="1"
-              value={seatId}
+              value={quantityText}
               disabled={loading}
-              onChange={(e) => changeSeat(e.target.value)}
+              onChange={(e) => changeQuantity(e.target.value)}
             />
-            {!validSeat && (
-              <p role="alert">Enter a valid seat number between 1 and {capacity}.</p>
+            {!validQuantity && (
+              <p role="alert">{limit === 0 ? "No tickets available for purchase right now." : `Enter a whole number between 1 and ${limit}.`}</p>
             )}
             <div className="purchase-summary">
               <h3>Order summary</h3>
               <p>Event: {event.name}</p>
-              <p>Seat: {seatId}</p>
-              <p>Price: {event.price !== undefined ? `€${event.price}` : "Not specified"}</p>
+              <p>Artist: {event.artist}</p>
+              <p>Ticket quantity: {quantityText}</p>
+              <p>Price per ticket: {unitPrice !== undefined ? `€${unitPrice.toFixed(2)}` : "Not specified"}</p>
+              <p>Total price: {unitPrice !== undefined && Number.isSafeInteger(quantity) && quantity > 0 ? `€${(unitPrice * quantity).toFixed(2)}` : "—"}</p>
             </div>
             <button
               type="button"
               className="purchase-confirm"
-              disabled={!validSeat || loading}
+              disabled={!validQuantity || loading}
               onClick={() => void handlePurchase()}
             >
               {loading ? "Submitting request..." : "Confirm purchase"}
@@ -205,14 +222,14 @@ export default function Purchase({ event, onBack }: Props) {
         {error && (
           <div className="purchase-error" role="alert">
             <p>{error}</p>
-            <p>If the request may have been received, retry without changing the seat.</p>
+            <p>If the request may have been received, retry without changing the ticket quantity.</p>
           </div>
         )}
 
         {orderId && !settled && (
           <div className="purchase-processing" role="status">
             <h3>Processing your purchase…</h3>
-            <p>Reserving the seat, taking payment and issuing your ticket.</p>
+            <p>Reserving tickets, taking payment and issuing your QR codes.</p>
             <p>Order reference:</p>
             <code>{orderId}</code>
             {!polling && (
@@ -238,28 +255,15 @@ export default function Purchase({ event, onBack }: Props) {
               Email delivery is disabled in this environment
               {order.emailStatus === "not_sent" ? " (not sent)" : ""}, so here is your ticket:
             </p>
-            {(order.qrUrl || order.qrPayload) && !qrFailed && (
-              <img
-                className="ticket-qr"
-                src={order.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(order.qrPayload!)}`}
-                onError={() => setQrFailed(true)}
-                alt="Your ticket QR code"
-                width={200}
-                height={200}
-              />
-            )}
-            {qrFailed && <p role="alert">The QR image could not load. Keep the ticket code below and try again later.</p>}
+            <TicketList tickets={tickets} />
+            {tickets.length === 0 && <p role="alert">Your ticket records could not be loaded. Keep your order reference and contact support.</p>}
             <div className="ticket-details">
               <p>Event: {event.name}</p>
-              <p>Seat: {order.seatId}</p>
+              <p>Ticket quantity: {order.quantity ?? 1}</p>
+              {order.totalPrice !== undefined && <p>Total price: €{order.totalPrice.toFixed(2)}</p>}
               <p>Order reference:</p>
               <code>{order.orderId}</code>
-              {order.qrPayload && (
-                <>
-                  <p>Ticket code:</p>
-                  <code>{order.qrPayload}</code>
-                </>
-              )}
+
             </div>
           </div>
         )}
@@ -269,7 +273,7 @@ export default function Purchase({ event, onBack }: Props) {
             <h3>Purchase not completed</h3>
             <p>
               {order.orderStatus === "REJECTED"
-                ? "That seat was not available. Please pick another seat."
+                ? "There were not enough tickets available to complete this purchase."
                 : order.orderStatus === "REVIEW_REQUIRED"
                   ? "Your payment went through but the ticket needs review. Keep your order reference."
                   : "The purchase could not be completed. Please try again."}

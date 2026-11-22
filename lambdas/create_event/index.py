@@ -35,6 +35,11 @@ def handler(event, context):
     if missing:
         return _response(400, {"error": "Missing fields: " + ", ".join(missing)})
 
+    capacity, price = data["capacity"], data["price"]
+    if (isinstance(capacity, bool) or not isinstance(capacity, (int, Decimal)) or capacity != int(capacity) or not 1 <= capacity <= 1000000
+            or isinstance(price, bool) or not isinstance(price, (int, Decimal)) or not Decimal(price).is_finite() or price < 0):
+        return _response(400, {"error": "Capacity must be a positive integer and price must be non-negative"})
+
     item = {
         "eventId": str(uuid.uuid4()),
         "artistId": claims["sub"],  # TODO later: edit/cancel only if artistId == caller
@@ -44,6 +49,10 @@ def handler(event, context):
         "price": data["price"],
         "capacity": int(data["capacity"]),
         "createdAt": int(time.time()),
+        "inventoryVersion": 2,
+        "sold": 0,
+        "reserved": 0,
+        "available": int(capacity),
     }
     # Optional fields used by the recommendations (genre, artist name, venue).
     for field in ("artist", "venue"):

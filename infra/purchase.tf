@@ -105,17 +105,19 @@ data "archive_file" "create_purchase" {
 }
 
 resource "aws_lambda_function" "create_purchase" {
-  function_name    = "${var.prefix}-create-purchase"
-  role             = data.aws_iam_role.lab.arn
-  runtime          = "python3.12"
-  handler          = "index.handler"
-  filename         = data.archive_file.create_purchase.output_path
-  source_code_hash = data.archive_file.create_purchase.output_base64sha256
-  timeout          = 10
-  memory_size      = 128
+  reserved_concurrent_executions = var.purchases_enabled ? -1 : 0
+  function_name                  = "${var.prefix}-create-purchase"
+  role                           = data.aws_iam_role.lab.arn
+  runtime                        = "python3.12"
+  handler                        = "index.handler"
+  filename                       = data.archive_file.create_purchase.output_path
+  source_code_hash               = data.archive_file.create_purchase.output_base64sha256
+  timeout                        = 10
+  memory_size                    = 128
 
   environment {
     variables = {
+      PURCHASES_ENABLED  = tostring(var.purchases_enabled)
       EVENTS_TABLE       = aws_dynamodb_table.events.name
       ORDERS_TABLE       = aws_dynamodb_table.orders.name
       PURCHASE_QUEUE_URL = aws_sqs_queue.purchase_queue.url
