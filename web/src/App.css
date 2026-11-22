@@ -78,6 +78,16 @@
   font-size: 48px;
 }
 
+.event-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.event-image-credit { display: block; padding: 0.4rem 1rem; color: #c8bfdd; font-size: 0.7rem; }
+.artist-image-preview { width: 100%; max-width: 480px; max-height: 270px; object-fit: contain; border-radius: 12px; }
+
 .event-info {
   padding: 20px;
 }

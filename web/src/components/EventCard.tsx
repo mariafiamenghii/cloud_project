@@ -1,4 +1,7 @@
 
+import { useState } from "react";
+import { formatEventPrice } from "../utils/eventMedia";
+
 export type Event = {
   id: string;
   name: string;
@@ -12,7 +15,23 @@ export type Event = {
   externalUrl?: string;
   capacity?: number;
   available?: number;
+  imageUrl?: string;
+  imageAttribution?: string;
+  currency?: string;
 };
+
+function EventImage({ event }: { event: Event }) {
+  const [failed, setFailed] = useState(false);
+  return <>
+    <div className="event-image">
+      {event.imageUrl && !failed
+        ? <img src={event.imageUrl} alt={event.name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        : <span aria-label="Event image unavailable">🎵</span>}
+    </div>
+    {event.imageUrl && !failed && (event.imageAttribution || event.source === "ticketmaster") &&
+      <small className="event-image-credit">{event.imageAttribution || "Image supplied by Ticketmaster"}</small>}
+  </>;
+}
 
 type Props = {
   event: Event;
@@ -29,11 +48,11 @@ export default function EventCard({ event, onBuy }: Props) {
 
   return (
     <article className="event-card">
-      <div className="event-image">🎵</div>
+      <EventImage key={event.imageUrl || "fallback"} event={event} />
 
       <div className="event-info">
         <span className="event-genre">
-          {event.genre || "Live Music"}
+          {event.genre === "catalan" ? "Catalan" : event.genre || "Live Music"}
         </span>
 
         <h3>{event.name}</h3>
@@ -47,9 +66,7 @@ export default function EventCard({ event, onBuy }: Props) {
         <p>{event.date}</p>
 
         <strong>
-          {event.price !== undefined
-            ? `From €${event.price}`
-            : "Price unavailable"}
+          {formatEventPrice(event.price, event.currency, isTicketmaster)}
         </strong>
         {!isTicketmaster && event.available !== undefined && (
           <p>{event.available === 0 ? "Sold out" : `${event.available} tickets remaining`}</p>

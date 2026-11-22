@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import EventCard, { type Event } from "../components/EventCard";
 import { getRecommendations } from "../services/api";
 import { upcomingEvents } from "../utils/events";
+import { mediaFields } from "../utils/eventMedia";
 
 type RecommendedEvent = Event & {
   score: number;
@@ -61,6 +62,7 @@ function normalizeRecommendation(value: unknown): RecommendedEvent {
       : Number(record.price);
 
   return {
+    ...mediaFields(record),
     id,
     name: record.name,
     artist: typeof record.artist === "string"

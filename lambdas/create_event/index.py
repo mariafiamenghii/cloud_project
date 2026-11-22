@@ -20,9 +20,11 @@ def _response(status, body):
 
 def handler(event, context):
     # API Gateway already checked the token. Here we check the ROLE.
-    claims = event["requestContext"]["authorizer"]["jwt"]["claims"]
+    claims = event.get("requestContext", {}).get("authorizer", {}).get("jwt", {}).get("claims", {})
+    if not isinstance(claims.get("sub"), str) or not claims["sub"].strip():
+        return _response(401, {"error": "Authentication required"})
     # HTTP API turns the group list into a string such as "[artist admin]".
-    groups = str(claims.get("cognito:groups", "")).strip("[]").replace(",", " ").split()
+    groups = str(claims.get("cognito:groups", "")).translate(str.maketrans({c: " " for c in "[],\"'"})).split()
     if "artist" not in groups and "admin" not in groups:
         return _response(403, {"error": "Only artists can create events"})
 
@@ -30,6 +32,8 @@ def handler(event, context):
         data = json.loads(event.get("body") or "{}", parse_float=Decimal)
     except ValueError:
         return _response(400, {"error": "Body must be valid JSON"})
+    if not isinstance(data, dict) or "imageUrl" in data or "imageObjectKey" in data:
+        return _response(400, {"error": "Use an authorized image upload reference"})
 
     missing = [f for f in REQUIRED if f not in data]
     if missing:
@@ -60,5 +64,20 @@ def handler(event, context):
             item[field] = str(data[field]).strip()[:80]
     if str(data.get("genre", "")).strip():
         item["genre"] = str(data["genre"]).strip().lower()[:40]
-    table.put_item(Item=item)
+    published = None
+    image_key = data.get("imageKey")
+    if image_key is not None and image_key != "":
+        from image_validation import publish_image, discard
+        try:
+            published = publish_image(image_key, claims["sub"], item["eventId"])
+        except ValueError as error:
+            return _response(400, {"error": str(error)})
+        item["imageObjectKey"] = published
+        item["imageUrl"] = os.environ["PUBLIC_API_URL"] + "/event-images/" + item["eventId"]
+    try:
+        table.put_item(Item=item)
+    except Exception:
+        if published: discard(published)
+        raise
+    if published: discard(image_key)
     return _response(201, {"eventId": item["eventId"]})

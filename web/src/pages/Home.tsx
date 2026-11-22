@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import EventCard, { type Event } from "../components/EventCard";
 import { getEvents } from "../services/api";
 import { upcomingEvents } from "../utils/events";
+import { mediaFields } from "../utils/eventMedia";
 
 // Use sample events locally until AWS is connected.
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
@@ -72,6 +73,7 @@ function normalizeEvent(value: unknown): Event {
       : Number(record.capacity);
 
   return {
+    ...mediaFields(record),
     id,
     name: record.name,
 
