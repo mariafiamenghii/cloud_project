@@ -166,6 +166,13 @@ export type Order = {
   unitPrice?: number;
   totalPrice?: number;
   tickets?: Ticket[];
+  event?: {
+    name?: string;
+    artist?: string;
+    city?: string;
+    date?: string;
+    venue?: string;
+  };
 };
 
 export type Ticket = {
@@ -225,4 +232,20 @@ export async function getOrder(
 
     throw err;
   }
+}
+
+// MY TICKETS: the logged-in user's own orders, newest first.
+export async function getMyOrders(): Promise<Order[]> {
+  const data = await apiRequest("/orders", {}, true);
+
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("orders" in data) ||
+    !Array.isArray(data.orders)
+  ) {
+    throw new Error("Invalid orders response");
+  }
+
+  return data.orders as Order[];
 }

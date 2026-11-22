@@ -13,6 +13,7 @@ import Survey from "./pages/Survey";
 import Recommendations from "./pages/Recommendations";
 import Purchase from "./pages/Purchase";
 import ArtistDashboard from "./pages/ArtistDashboard";
+import MyTickets from "./pages/MyTickets";
 
 import type { Event } from "./components/EventCard";
 import "./App.css";
@@ -28,6 +29,7 @@ type Page =
   | "home"
   | "survey"
   | "recommendations"
+  | "mytickets"
   | "purchase"
   | "artist";
 
@@ -52,6 +54,9 @@ function PageContent({
 
     case "recommendations":
       return <Recommendations onBuy={onBuy} />;
+
+    case "mytickets":
+      return <MyTickets />;
 
     case "artist":
       return canPublish ? (
@@ -100,6 +105,10 @@ function Navigation({ canPublish, navigate }: NavigationProps) {
         onClick={() => navigate("recommendations")}
       >
         Recommended for You
+      </button>
+
+      <button type="button" onClick={() => navigate("mytickets")}>
+        My Tickets
       </button>
 
       {canPublish && (
@@ -242,6 +251,7 @@ export default function App() {
       !demoMode &&
       (page === "survey" ||
         page === "recommendations" ||
+        page === "mytickets" ||
         page === "artist" ||
         page === "purchase")
     ) {
