@@ -26,6 +26,7 @@ resource "aws_lambda_function" "list_events" {
 data "archive_file" "create_event" {
   type        = "zip"
   source_dir  = "${path.module}/../lambdas/create_event"
+  excludes    = ["__pycache__/**", "*.pyc"]
   output_path = "${path.module}/create_event.zip"
 }
 
@@ -37,11 +38,15 @@ resource "aws_lambda_function" "create_event" {
   handler                        = "index.handler"
   filename                       = data.archive_file.create_event.output_path
   source_code_hash               = data.archive_file.create_event.output_base64sha256
-  timeout                        = 10
+  timeout                        = 25
+  memory_size                    = 512
+  layers                         = [aws_lambda_layer_version.image_validation.arn]
 
   environment {
     variables = {
-      EVENTS_TABLE = aws_dynamodb_table.events.name
+      EVENTS_TABLE   = aws_dynamodb_table.events.name
+      IMAGES_BUCKET  = aws_s3_bucket.event_images.id
+      PUBLIC_API_URL = aws_apigatewayv2_api.http.api_endpoint
     }
   }
 }

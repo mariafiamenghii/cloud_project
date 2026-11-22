@@ -1,19 +1,8 @@
 
 import { useState, type FormEvent } from "react";
 import { savePreferences } from "../services/api";
+import { GENRES as genres } from "../utils/eventMedia";
 
-const genres = [
-  "Pop",
-  "Rock",
-  "Indie",
-  "Electronic",
-  "Hip-Hop",
-  "Reggaeton",
-  "Jazz",
-  "Classical",
-  "R&B",
-  "Latin",
-];
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 

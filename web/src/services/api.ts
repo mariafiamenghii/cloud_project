@@ -51,6 +51,7 @@ export async function getEvents(): Promise<unknown[]> {
 }
 
 export type CreateEventInput = {
+  imageKey?: string;
   name: string;
   artist?: string;
   city: string;
@@ -60,6 +61,21 @@ export type CreateEventInput = {
   price: number;
   capacity: number;
 };
+
+export async function uploadEventImage(file: File): Promise<string> {
+  const { imageError } = await import("../utils/eventMedia");
+  const error = imageError(file);
+  if (error) throw new Error(error);
+  const authorization = await apiRequest("/event-images/uploads", {
+    method: "POST", body: JSON.stringify({ contentType: file.type, size: file.size }),
+  }, true) as { url: string; fields: Record<string, string>; key: string };
+  const form = new FormData();
+  for (const [key, value] of Object.entries(authorization.fields)) form.append(key, value);
+  form.append("file", file);
+  const result = await fetch(authorization.url, { method: "POST", body: form });
+  if (!result.ok) throw new Error("Image upload failed. Please try again.");
+  return authorization.key;
+}
 
 export async function createEvent(
   eventData: CreateEventInput

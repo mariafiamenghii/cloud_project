@@ -1,24 +1,14 @@
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { GENRES as genres, imageError } from "../utils/eventMedia";
 import {
   createEvent,
+  uploadEventImage,
   type CreateEventInput,
 } from "../services/api";
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
-const genres = [
-  "Pop",
-  "Rock",
-  "Indie",
-  "Electronic",
-  "Hip-Hop",
-  "Reggaeton",
-  "Jazz",
-  "Classical",
-  "R&B",
-  "Latin",
-];
 
 export default function ArtistDashboard() {
   const [name, setName] = useState("");
@@ -29,6 +19,21 @@ export default function ArtistDashboard() {
   const [genre, setGenre] = useState("");
   const [price, setPrice] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const [imageKey, setImageKey] = useState("");
+  const imageInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  function selectImage(file: File | null) {
+    const problem = file ? imageError(file) : "";
+    setError(problem);
+    setImage(problem ? null : file);
+    setPreview(file && !problem ? URL.createObjectURL(file) : "");
+    setImageKey("");
+    if (!file || problem) { if (imageInput.current) imageInput.current.value = ""; }
+  }
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -93,6 +98,11 @@ export default function ArtistDashboard() {
           "Demo event created! This event was not saved to AWS."
         );
       } else {
+        if (image) {
+          const key = imageKey || await uploadEventImage(image);
+          setImageKey(key);
+          eventData.imageKey = key;
+        }
         const result = await createEvent(eventData);
 
         setCreatedEventId(result.eventId);
@@ -120,6 +130,7 @@ export default function ArtistDashboard() {
     setGenre("");
     setPrice("");
     setCapacity("");
+    selectImage(null);
     setError("");
     setSuccessMessage("");
     setCreatedEventId("");
@@ -192,6 +203,16 @@ export default function ArtistDashboard() {
               onChange={(e) => setVenue(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="artist-field">
+          <label htmlFor="event-image">Event Image</label>
+          <input ref={imageInput} id="event-image" type="file" accept="image/jpeg,image/png,image/webp"
+            disabled={loading} onChange={(e) => selectImage(e.target.files?.[0] ?? null)} />
+          <button type="button" disabled={loading} onClick={() => imageInput.current?.click()}>Upload Image</button>
+          <small>Optional. JPEG, PNG or WebP, up to 5 MB.</small>
+          {preview && <img className="artist-image-preview" src={preview} alt="Selected event image preview" />}
+          {image && <button type="button" disabled={loading} onClick={() => selectImage(null)}>Remove image</button>}
         </div>
 
         <div className="artist-form-grid">

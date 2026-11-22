@@ -28,6 +28,7 @@ resource "aws_lambda_function" "preferences" {
 data "archive_file" "recommend" {
   type        = "zip"
   source_dir  = "${path.module}/../lambdas/recommend"
+  excludes    = ["__pycache__/**", "*.pyc"]
   output_path = "${path.module}/recommend.zip"
 }
 
