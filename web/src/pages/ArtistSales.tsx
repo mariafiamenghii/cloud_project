@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getMyEvents } from "../services/api";
+import { deleteEvent, getMyEvents } from "../services/api";
 import type { EventSales } from "../services/api";
 
 const REFRESH_MS = 15000;
@@ -16,6 +16,27 @@ export default function ArtistSales() {
   const [events, setEvents] = useState<EventSales[] | null>(null);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState("");
+  const [confirmId, setConfirmId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+
+  async function handleDelete(eventId: string) {
+    setDeleteError("");
+    setDeletingId(eventId);
+    try {
+      await deleteEvent(eventId);
+      setEvents((current) =>
+        current ? current.filter((e) => e.eventId !== eventId) : current
+      );
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete the event."
+      );
+    } finally {
+      setDeletingId("");
+      setConfirmId("");
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -53,6 +74,7 @@ export default function ArtistSales() {
       <h2>Ticket Sales</h2>
 
       {error && <p role="alert">{error}</p>}
+      {deleteError && <p role="alert">{deleteError}</p>}
       {!error && events === null && <p>Loading your sales...</p>}
       {events !== null && events.length === 0 && (
         <p>You have not created any events yet.</p>
@@ -74,6 +96,7 @@ export default function ArtistSales() {
                 <th align="left">Left</th>
                 <th align="left">Revenue</th>
                 <th align="left">Status</th>
+                <th align="left"></th>
               </tr>
             </thead>
             <tbody>
@@ -95,6 +118,42 @@ export default function ArtistSales() {
                   <td>{e.available}</td>
                   <td>{euros(e.revenue)}</td>
                   <td>{e.soldOut ? "Sold out" : "On sale"}</td>
+                  <td>
+                    {confirmId === e.eventId ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={deletingId === e.eventId}
+                          onClick={() => void handleDelete(e.eventId)}
+                        >
+                          {deletingId === e.eventId ? "Deleting..." : "Confirm?"}
+                        </button>{" "}
+                        <button
+                          type="button"
+                          disabled={deletingId === e.eventId}
+                          onClick={() => setConfirmId("")}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={e.sold > 0 || e.reserved > 0}
+                        title={
+                          e.sold > 0 || e.reserved > 0
+                            ? "Events with sales cannot be deleted"
+                            : "Delete this event"
+                        }
+                        onClick={() => {
+                          setDeleteError("");
+                          setConfirmId(e.eventId);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
