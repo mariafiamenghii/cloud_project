@@ -281,3 +281,13 @@ export async function getMyEvents(): Promise<EventSales[]> {
 
   return data.events as EventSales[];
 }
+
+// DELETE EVENTS: an artist deletes their own event, an admin any event.
+// The API refuses events that already have sales.
+export async function deleteEvent(eventId: string): Promise<void> {
+  await apiRequest(
+    `/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE" },
+    true
+  );
+}
