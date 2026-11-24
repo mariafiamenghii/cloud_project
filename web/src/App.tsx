@@ -15,8 +15,10 @@ import Purchase from "./pages/Purchase";
 import ArtistDashboard from "./pages/ArtistDashboard";
 import MyTickets from "./pages/MyTickets";
 import ArtistSales from "./pages/ArtistSales";
+import SiteHeader, { BrandLogo } from "./components/SiteHeader";
 
 import type { Event } from "./components/EventCard";
+import { PRIVATE_PAGES, type Page } from "./navigation";
 import "./App.css";
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
@@ -25,15 +27,6 @@ const authConfigured = Boolean(
   import.meta.env.VITE_USER_POOL_ID &&
   import.meta.env.VITE_USER_POOL_CLIENT_ID
 );
-
-type Page =
-  | "home"
-  | "survey"
-  | "recommendations"
-  | "mytickets"
-  | "purchase"
-  | "artist"
-  | "sales";
 
 type PageContentProps = {
   page: Page;
@@ -60,12 +53,14 @@ function PageContent({
     case "mytickets":
       return <MyTickets />;
 
+    // Hiding the menu links is cosmetic: these pages check the role again and
+    // the API enforces the Cognito groups on every request.
     case "artist":
       return canPublish ? (
         <ArtistDashboard />
       ) : (
         <main className="container">
-          <p role="alert">
+          <p className="notice notice-error" role="alert">
             Only approved artists and admins can publish events.
           </p>
         </main>
@@ -76,7 +71,7 @@ function PageContent({
         <ArtistSales />
       ) : (
         <main className="container">
-          <p role="alert">
+          <p className="notice notice-error" role="alert">
             Only approved artists and admins can see sales.
           </p>
         </main>
@@ -97,48 +92,6 @@ function PageContent({
   }
 }
 
-type NavigationProps = {
-  canPublish: boolean;
-  navigate: (page: Page) => void;
-};
-
-function Navigation({ canPublish, navigate }: NavigationProps) {
-  return (
-    <nav className="auth-navigation" aria-label="Main navigation">
-      <button type="button" onClick={() => navigate("home")}>
-        Discover Events
-      </button>
-
-      <button type="button" onClick={() => navigate("survey")}>
-        Music Preferences
-      </button>
-
-      <button
-        type="button"
-        onClick={() => navigate("recommendations")}
-      >
-        Recommended for You
-      </button>
-
-      <button type="button" onClick={() => navigate("mytickets")}>
-        My Tickets
-      </button>
-
-      {canPublish && (
-        <button type="button" onClick={() => navigate("artist")}>
-          Artist Dashboard
-        </button>
-      )}
-
-      {canPublish && (
-        <button type="button" onClick={() => navigate("sales")}>
-          Sales
-        </button>
-      )}
-    </nav>
-  );
-}
-
 type SignedInProps = {
   page: Page;
   selectedEvent: Event | null;
@@ -157,6 +110,7 @@ function SignedInArea({
   signOut,
 }: SignedInProps) {
   const [displayName, setDisplayName] = useState("User");
+  const [email, setEmail] = useState<string | undefined>();
   const [canPublish, setCanPublish] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState("");
@@ -186,6 +140,7 @@ function SignedInArea({
         setDisplayName(
           attributes.name || attributes.email || "User"
         );
+        setEmail(attributes.email);
 
         setCanPublish(
           groups.includes("artist") ||
@@ -220,38 +175,46 @@ function SignedInArea({
     }
   }
 
-  if (profileLoading) {
-    return <main className="container">Loading account...</main>;
-  }
-
   return (
     <>
-      <div className="auth-navigation">
-        <span>Welcome, {displayName}</span>
+      <SiteHeader
+        currentPage={page}
+        onNavigate={navigate}
+        account={
+          profileLoading
+            ? undefined
+            : {
+                displayName,
+                email,
+                canPublish,
+                onLogout: () => void handleLogout(),
+              }
+        }
+      />
 
-        <button type="button" onClick={() => void handleLogout()}>
-          Log out
-        </button>
-      </div>
+      {profileLoading ? (
+        <main className="container">
+          <p role="status">Loading account...</p>
+        </main>
+      ) : (
+        <>
+          {profileError && (
+            <div className="container container-flush">
+              <p className="notice notice-error" role="alert">
+                {profileError}
+              </p>
+            </div>
+          )}
 
-      {profileError && (
-        <p className="container" role="alert">
-          {profileError}
-        </p>
+          <PageContent
+            page={page}
+            selectedEvent={selectedEvent}
+            canPublish={canPublish}
+            onBuy={onBuy}
+            navigate={navigate}
+          />
+        </>
       )}
-
-      <Navigation
-        canPublish={canPublish}
-        navigate={navigate}
-      />
-
-      <PageContent
-        page={page}
-        selectedEvent={selectedEvent}
-        canPublish={canPublish}
-        onBuy={onBuy}
-        navigate={navigate}
-      />
     </>
   );
 }
@@ -264,17 +227,10 @@ export default function App() {
 
   function navigate(page: Page) {
     setCurrentPage(page);
+    window.scrollTo({ top: 0 });
 
     // Private pages require login outside demo mode.
-    if (
-      !demoMode &&
-      (page === "survey" ||
-        page === "recommendations" ||
-        page === "mytickets" ||
-        page === "artist" ||
-        page === "sales" ||
-        page === "purchase")
-    ) {
+    if (!demoMode && PRIVATE_PAGES.includes(page)) {
       setShowLogin(true);
     }
   }
@@ -294,7 +250,34 @@ export default function App() {
 
   if (showLogin && authConfigured) {
     return (
-      <Authenticator loginMechanisms={["email"]}>
+      <Authenticator
+        loginMechanisms={["email"]}
+        components={{
+          Header() {
+            return (
+              <div className="auth-brand">
+                <BrandLogo />
+              </div>
+            );
+          },
+          Footer() {
+            return (
+              <div className="auth-footer">
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setShowLogin(false);
+                    setCurrentPage("home");
+                  }}
+                >
+                  ← Back to events
+                </button>
+              </div>
+            );
+          },
+        }}
+      >
         {({ signOut }) => (
           <SignedInArea
             page={currentPage}
@@ -315,22 +298,17 @@ export default function App() {
 
   return (
     <>
-      <Navigation
-        canPublish={false}
-        navigate={navigate}
-      />
-
-      <div className="auth-navigation">
-        <button
-          type="button"
-          disabled={!authConfigured}
-          onClick={() => setShowLogin(true)}
-        >
-          {authConfigured
+      <SiteHeader
+        currentPage={currentPage}
+        onNavigate={navigate}
+        login={{
+          label: authConfigured
             ? "Log in / Sign up"
-            : "Login available after AWS deployment"}
-        </button>
-      </div>
+            : "Login available after AWS deployment",
+          disabled: !authConfigured,
+          onClick: () => setShowLogin(true),
+        }}
+      />
 
       <PageContent
         page={currentPage}

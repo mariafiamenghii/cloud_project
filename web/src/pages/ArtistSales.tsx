@@ -71,7 +71,7 @@ export default function ArtistSales() {
 
   return (
     <main className="container">
-      <h2>Ticket Sales</h2>
+      <h1 className="page-title">Ticket Sales</h1>
 
       {error && <p role="alert">{error}</p>}
       {deleteError && <p role="alert">{deleteError}</p>}
@@ -82,12 +82,13 @@ export default function ArtistSales() {
 
       {events !== null && events.length > 0 && (
         <>
-          <p>
+          <p className="sales-summary">
             <strong>{totalSold}</strong> tickets sold ·{" "}
             <strong>{euros(totalRevenue)}</strong> revenue
           </p>
 
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="table-wrap">
+          <table className="data-table">
             <thead>
               <tr>
                 <th align="left">Event</th>
@@ -158,6 +159,7 @@ export default function ArtistSales() {
               ))}
             </tbody>
           </table>
+          </div>
 
           <p>
             <small>Updates every 15 seconds. Last update: {updatedAt}</small>
