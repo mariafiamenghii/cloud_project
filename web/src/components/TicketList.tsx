@@ -1,15 +1,12 @@
-import { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import type { Ticket } from "../services/api";
 
 function IssuedTicket({ ticket, index, count }: { ticket: Ticket; index: number; count: number }) {
-  const [imageFailed, setImageFailed] = useState(false);
   return (
     <section className="ticket-details" aria-label={`Ticket ${index + 1} of ${count}`}>
       <h4>Ticket {index + 1} of {count}</h4>
-      {!imageFailed && <img className="ticket-qr" width={200} height={200}
-        src={ticket.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(ticket.qrPayload)}`}
-        alt={`QR code for ticket ${index + 1} of ${count}`} onError={() => setImageFailed(true)} />}
-      {imageFailed && <p role="alert">The QR image could not load. Keep the ticket code below.</p>}
+      <QRCodeSVG className="ticket-qr" value={ticket.qrPayload} size={200} bgColor="#ffffff" fgColor="#000000" marginSize={4}
+        title={`QR code for ticket ${index + 1} of ${count}`} />
       <p>Ticket ID:</p><code>{ticket.ticketId}</code>
       <p>Ticket code:</p><code>{ticket.qrPayload}</code>
     </section>
