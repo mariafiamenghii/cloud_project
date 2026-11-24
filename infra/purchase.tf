@@ -87,6 +87,12 @@ resource "aws_lambda_event_source_mapping" "purchase_queue_trigger" {
   scaling_config {
     maximum_concurrency = 2
   }
+
+  # The heal Lambda (self_heal.tf) owns the enabled state after creation, so a
+  # terraform apply never re-enables the trigger during a maintenance pause.
+  lifecycle {
+    ignore_changes = [enabled]
+  }
 }
 
 data "archive_file" "create_purchase" {
