@@ -119,6 +119,7 @@ export default function Survey() {
             type="text"
             value={artists}
             onChange={(event) => setArtists(event.target.value)}
+            aria-label="Favorite artists"
             placeholder="Coldplay, Rosalía, Bad Bunny..."
           />
         </section>
@@ -135,6 +136,7 @@ export default function Survey() {
             type="text"
             value={city}
             onChange={(event) => setCity(event.target.value)}
+            aria-label="Your city"
             placeholder="Your city"
             maxLength={60}
           />

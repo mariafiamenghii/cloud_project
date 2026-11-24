@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { formatEventPrice } from "../utils/eventMedia";
+import { eventSource, formatEventDate } from "../utils/eventFilters";
 
 export type Event = {
   id: string;
@@ -26,7 +27,7 @@ function EventImage({ event }: { event: Event }) {
     <div className="event-image">
       {event.imageUrl && !failed
         ? <img src={event.imageUrl} alt={event.name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
-        : <span aria-label="Event image unavailable">🎵</span>}
+        : <span className="event-image-fallback" role="img" aria-label="Event image unavailable">♪</span>}
     </div>
     {event.imageUrl && !failed && (event.imageAttribution || event.source === "ticketmaster") &&
       <small className="event-image-credit">{event.imageAttribution || "Image supplied by Ticketmaster"}</small>}
@@ -40,6 +41,8 @@ type Props = {
 
 export default function EventCard({ event, onBuy }: Props) {
   const isTicketmaster = event.source === "ticketmaster";
+  const source = eventSource(event);
+  const soldOut = !isTicketmaster && event.available === 0;
 
   // Only internal events with positive capacity can be purchased.
   const canPurchase =
@@ -47,8 +50,15 @@ export default function EventCard({ event, onBuy }: Props) {
     (event.capacity ?? 0) > 0 && event.available !== 0;
 
   return (
-    <article className="event-card">
-      <EventImage key={event.imageUrl || "fallback"} event={event} />
+    <article className={`event-card${isTicketmaster ? " is-external" : ""}`}>
+      <div className="event-media">
+        <EventImage key={event.imageUrl || "fallback"} event={event} />
+        {source !== "other" && (
+          <span className={`source-badge source-${source}`}>
+            {source === "ticketmaster" ? "Ticketmaster" : "Front Row"}
+          </span>
+        )}
+      </div>
 
       <div className="event-info">
         <span className="event-genre">
@@ -56,48 +66,64 @@ export default function EventCard({ event, onBuy }: Props) {
         </span>
 
         <h3>{event.name}</h3>
-        <p>{event.artist}</p>
+        <p className="event-artist">{event.artist}</p>
 
-        <p>
-          {event.city}
-          {event.venue ? ` · ${event.venue}` : ""}
-        </p>
+        <dl className="event-meta">
+          <div>
+            <dt>Date</dt>
+            <dd><time dateTime={event.date}>{formatEventDate(event.date)}</time></dd>
+          </div>
+          <div>
+            <dt>Where</dt>
+            <dd>
+              {event.city}
+              {event.venue ? ` · ${event.venue}` : ""}
+            </dd>
+          </div>
+        </dl>
 
-        <p>{event.date}</p>
+        <div className="event-footer">
+          <div className="event-price">
+            <strong>
+              {formatEventPrice(event.price, event.currency, isTicketmaster)}
+            </strong>
+            {!isTicketmaster && event.available !== undefined && (
+              <span className={`stock${soldOut ? " is-sold-out" : event.available <= 10 ? " is-low" : ""}`}>
+                {soldOut ? "Sold out" : `${event.available} tickets remaining`}
+              </span>
+            )}
+          </div>
 
-        <strong>
-          {formatEventPrice(event.price, event.currency, isTicketmaster)}
-        </strong>
-        {!isTicketmaster && event.available !== undefined && (
-          <p>{event.available === 0 ? "Sold out" : `${event.available} tickets remaining`}</p>
-        )}
-
-        {isTicketmaster ? (
-          event.externalUrl ? (
-            <a
-              className="ticket-button"
-              href={event.externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View on Ticketmaster
-            </a>
+          {isTicketmaster ? (
+            event.externalUrl ? (
+              <a
+                className="btn btn-outline"
+                href={event.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View on Ticketmaster
+                <span className="visually-hidden"> (opens in a new tab)</span>
+                <span aria-hidden="true"> ↗</span>
+              </a>
+            ) : (
+              <button type="button" className="btn btn-outline" disabled>
+                External tickets unavailable
+              </button>
+            )
           ) : (
-            <button type="button" disabled>
-              External tickets unavailable
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!canPurchase || !onBuy}
+              onClick={() => onBuy?.(event)}
+            >
+              {canPurchase
+                ? "Buy Tickets"
+                : event.available === 0 ? "Sold out" : "Tickets unavailable"}
             </button>
-          )
-        ) : (
-          <button
-            type="button"
-            disabled={!canPurchase || !onBuy}
-            onClick={() => onBuy?.(event)}
-          >
-            {canPurchase
-              ? "Buy Tickets"
-              : event.available === 0 ? "Sold out" : "Tickets unavailable"}
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </article>
   );

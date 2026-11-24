@@ -151,7 +151,8 @@ export default function Recommendations({ onBuy }: { onBuy?: (event: Event) => v
   return (
     <main className="container">
       <section className="hero">
-        <h2>Recommended for You</h2>
+        <p className="hero-kicker">Picked for your taste</p>
+        <h1>Recommended for You</h1>
         <p>
           Discover concerts that match your music taste.
         </p>

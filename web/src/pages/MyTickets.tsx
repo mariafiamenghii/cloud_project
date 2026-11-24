@@ -28,7 +28,7 @@ function OrderCard({ order }: { order: Order }) {
     .join(" · ");
 
   return (
-    <section className="ticket-details">
+    <section className="ticket-details order-card">
       <h3>{event?.name || "Event"}</h3>
       {details && <p>{details}</p>}
       <p>
@@ -71,7 +71,7 @@ export default function MyTickets() {
 
   return (
     <main className="container">
-      <h2>My Tickets</h2>
+      <h1 className="page-title">My Tickets</h1>
 
       {error && <p role="alert">{error}</p>}
       {!error && orders === null && <p>Loading your tickets...</p>}
