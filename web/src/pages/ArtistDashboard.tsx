@@ -139,7 +139,7 @@ export default function ArtistDashboard() {
   return (
     <main className="artist-container">
       <section className="artist-header">
-        <h1>Artist Dashboard</h1>
+        <h1>Association Dashboard</h1>
         <p>
           Create and publish your events on our ticketing platform.
         </p>
@@ -161,19 +161,19 @@ export default function ArtistDashboard() {
             type="text"
             required
             maxLength={120}
-            placeholder="Indie Night Barcelona"
+            placeholder="Finance Club Networking Night"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
 
         <div className="artist-field">
-          <label htmlFor="artist-name">Artist Name</label>
+          <label htmlFor="artist-name">Association Name</label>
           <input
             id="artist-name"
             type="text"
             maxLength={80}
-            placeholder="Your artist or band name"
+            placeholder="Your association or club name"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
           />
@@ -229,13 +229,13 @@ export default function ArtistDashboard() {
           </div>
 
           <div className="artist-field">
-            <label htmlFor="event-genre">Music Genre</label>
+            <label htmlFor="event-genre">Category</label>
             <select
               id="event-genre"
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
             >
-              <option value="">Select a genre</option>
+              <option value="">Select a category</option>
               {genres.map((g) => (
                 <option key={g} value={g.toLowerCase()}>
                   {g}

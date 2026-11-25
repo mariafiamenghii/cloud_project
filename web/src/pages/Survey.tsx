@@ -109,7 +109,7 @@ export default function Survey() {
 
         {/* FAVORITE ARTISTS */}
         <section className="survey-section">
-          <h2>2. Who are your favorite artists?</h2>
+          <h2>2. Which associations or artists do you follow?</h2>
 
           <p>
             Enter up to five artists, separated by commas.
@@ -119,7 +119,7 @@ export default function Survey() {
             type="text"
             value={artists}
             onChange={(event) => setArtists(event.target.value)}
-            aria-label="Favorite artists"
+            aria-label="Favorite associations or artists"
             placeholder="Coldplay, Rosalía, Bad Bunny..."
           />
         </section>

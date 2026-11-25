@@ -223,7 +223,7 @@ export default function Home({ onBuy }: HomeProps) {
       <section className="hero">
         <p className="hero-kicker">Live music across Spain</p>
         <h1>Find your next live experience.</h1>
-        <p>Concerts from FRONT ROW artists and Ticketmaster, all in one place.</p>
+        <p>Events from FRONT ROW associations and from Barcelona, all in one place.</p>
       </section>
 
       <section className="filters" aria-labelledby="filters-title">
@@ -234,7 +234,7 @@ export default function Home({ onBuy }: HomeProps) {
           <input
             id="event-search"
             type="search"
-            placeholder="Artist, event, city, genre or venue…"
+            placeholder="Association, event, city, category or venue…"
             value={filters.search}
             onChange={(event) => update({ search: event.target.value })}
           />

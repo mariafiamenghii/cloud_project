@@ -32,7 +32,7 @@ export default function ProfileMenu({ account, currentPage, onNavigate }: Props)
     { page: "mytickets", label: "My Tickets" },
     ...(account.canPublish
       ? [
-          { page: "artist" as const, label: "Artist Dashboard" },
+          { page: "artist" as const, label: "Association Dashboard" },
           { page: "sales" as const, label: "Sales" },
         ]
       : []),
