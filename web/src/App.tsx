@@ -62,7 +62,7 @@ function PageContent({
       ) : (
         <main className="container">
           <p className="notice notice-error" role="alert">
-            Only approved artists and admins can publish events.
+            Only approved associations and admins can publish events.
           </p>
         </main>
       );
@@ -73,7 +73,7 @@ function PageContent({
       ) : (
         <main className="container">
           <p className="notice notice-error" role="alert">
-            Only approved artists and admins can see sales.
+            Only approved associations and admins can see sales.
           </p>
         </main>
       );

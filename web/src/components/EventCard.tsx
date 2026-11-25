@@ -63,7 +63,7 @@ export default function EventCard({ event, onBuy }: Props) {
 
       <div className="event-info">
         <span className="event-genre">
-          {event.genre === "catalan" ? "Catalan" : event.genre || "Live Music"}
+          {event.genre === "catalan" ? "Catalan" : event.genre || "Event"}
         </span>
 
         <h3>{event.name}</h3>
