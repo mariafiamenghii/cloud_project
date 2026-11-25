@@ -138,7 +138,7 @@ type HomeProps = {
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: "all", label: "All Events" },
   { value: "frontrow", label: "Front Row Events" },
-  { value: "ticketmaster", label: "Ticketmaster Events" },
+  { value: "barcelona", label: "Barcelona Events" },
 ];
 
 const euro = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });

@@ -619,7 +619,8 @@
   color: var(--fr-black);
 }
 
-.source-ticketmaster {
+.source-ticketmaster,
+.source-barcelona {
   background: var(--fr-white);
   color: var(--fr-black);
 }

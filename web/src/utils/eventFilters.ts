@@ -11,7 +11,10 @@
 //   known EUR price (no price, or another currency) are hidden unless the user ticks
 //   "Include events without a listed price". They are never treated as €0.
 
-export type SourceFilter = "all" | "frontrow" | "ticketmaster";
+export type SourceFilter = "all" | "frontrow" | "ticketmaster" | "barcelona";
+
+/** Sources whose tickets are sold elsewhere (we only show them). */
+export const EXTERNAL_SOURCES = ["ticketmaster", "barcelona_open_data"];
 
 export type EventFilters = {
   search: string;
@@ -43,8 +46,9 @@ export const DEFAULT_FILTERS: EventFilters = {
 export const UNKNOWN_CITY = "Unknown city";
 export const PRICE_CURRENCY = "EUR";
 
-export function eventSource(event: { source?: string }): "frontrow" | "ticketmaster" | "other" {
+export function eventSource(event: { source?: string }): "frontrow" | "ticketmaster" | "barcelona" | "other" {
   if (event.source === "ticketmaster") return "ticketmaster";
+  if (event.source === "barcelona_open_data") return "barcelona";
   if (event.source === undefined || event.source === "internal") return "frontrow";
   return "other";
 }

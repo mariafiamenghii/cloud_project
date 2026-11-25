@@ -93,7 +93,7 @@ def legacy_handler(event, context):
                 or capacity <= 0
                 or capacity != int(capacity)
                 or int(seat_id) > capacity
-                or item.get("source") == "ticketmaster"
+                or item.get("source") in ("ticketmaster", "barcelona_open_data")
             ):
                 return _response(400, {"error": "Event or seat is not available for purchase"})
             existing = persist_pending_order(orders, order, workflow_input)
@@ -153,7 +153,7 @@ def handler(event, context):
             item = ddb.Table(os.environ["EVENTS_TABLE"]).get_item(Key={"eventId": event_id}, ConsistentRead=True).get("Item")
             if not item:
                 return _response(404, {"error": "Event not found"})
-            if item.get("source") == "ticketmaster":
+            if item.get("source") in ("ticketmaster", "barcelona_open_data"):
                 return _response(400, {"error": "Use the external ticket provider"})
             if item.get("inventoryVersion") != 2:
                 return _response(503, {"error": "Event inventory is awaiting migration"})
