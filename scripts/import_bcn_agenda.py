@@ -87,6 +87,12 @@ def ticket_url(record):
     return ""
 
 
+def city_name(address):
+    """The agenda writes the city as both "Barcelona" and "BARCELONA"; store one spelling."""
+    town = " ".join(str(address.get("town") or "").split())
+    return "Barcelona" if not town or town.lower() == "barcelona" else town
+
+
 def ticket_types(record):
     """Entry types the agenda gives ("Lliure" = free entry, "Inscripcions" = sign-up...)."""
     return [str(t.get("name", "")).strip().lower() for t in (record.get("tickets_data") or [])]
@@ -115,7 +121,7 @@ def convert(record, today):
         "name": name,
         "artist": place or "Barcelona",
         "genre": genre,
-        "city": str(address.get("town") or "Barcelona"),
+        "city": city_name(address),
         "venue": place,
         "date": start,
         "capacity": 0,  # we do not sell these tickets
