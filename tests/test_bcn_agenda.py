@@ -54,6 +54,13 @@ class ConvertTests(unittest.TestCase):
         self.assertEqual((item["price"], item["currency"]), (0, "EUR"))
         self.assertNotIn("price", bcn.convert(record(), "2026-11-24"))
 
+    def test_city_spelling_is_normalised(self):
+        for town, expected in (("BARCELONA", "Barcelona"), (" barcelona ", "Barcelona"), ("", "Barcelona"),
+                               (None, "Barcelona"), ("L'Hospitalet de Llobregat", "L'Hospitalet de Llobregat")):
+            rec = record()
+            rec["addresses"][0]["town"] = town
+            self.assertEqual(bcn.convert(rec, "2026-11-24")["city"], expected)
+
     def test_pick_caps_each_genre_and_removes_duplicates(self):
         records = [record(name=f"C{i}", reg=f"R{i}", start=f"2027-01-{10 + i:02d}T20:00:00+01:00") for i in range(5)]
         records.append(records[0])
