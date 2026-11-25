@@ -19,6 +19,7 @@ import SiteHeader, { BrandLogo } from "./components/SiteHeader";
 
 import type { Event } from "./components/EventCard";
 import { PRIVATE_PAGES, type Page } from "./navigation";
+import { EXTERNAL_SOURCES } from "./utils/eventFilters";
 import "./App.css";
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
@@ -237,7 +238,7 @@ export default function App() {
 
   function handleBuy(event: Event) {
     if (
-      event.source === "ticketmaster" ||
+      EXTERNAL_SOURCES.includes(event.source ?? "") ||
       !event.capacity ||
       event.capacity <= 0
     ) {

@@ -18,7 +18,7 @@ def handler(event, context):
     event_id = (event.get("pathParameters") or {}).get("eventId")
     if event_id:
         item = table.get_item(Key={"eventId": event_id}, ConsistentRead=True).get("Item")
-        if not item or item.get("source") == "ticketmaster":
+        if not item or item.get("source") in ("ticketmaster", "barcelona_open_data"):
             return {"statusCode": 404, "body": json.dumps({"error": "Internal event not found"})}
         fields = ("eventId", "capacity", "sold", "reserved", "available", "inventoryVersion", "price")
         body = {key: item[key] for key in fields if key in item}

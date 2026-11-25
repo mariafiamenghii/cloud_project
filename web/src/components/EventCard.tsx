@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { formatEventPrice } from "../utils/eventMedia";
-import { eventSource, formatEventDate } from "../utils/eventFilters";
+import { EXTERNAL_SOURCES, eventSource, formatEventDate } from "../utils/eventFilters";
 
 export type Event = {
   id: string;
@@ -40,8 +40,9 @@ type Props = {
 };
 
 export default function EventCard({ event, onBuy }: Props) {
-  const isTicketmaster = event.source === "ticketmaster";
   const source = eventSource(event);
+  const isTicketmaster = EXTERNAL_SOURCES.includes(event.source ?? "");
+  const providerName = source === "barcelona" ? "the official site" : "Ticketmaster";
   const soldOut = !isTicketmaster && event.available === 0;
 
   // Only internal events with positive capacity can be purchased.
@@ -55,7 +56,7 @@ export default function EventCard({ event, onBuy }: Props) {
         <EventImage key={event.imageUrl || "fallback"} event={event} />
         {source !== "other" && (
           <span className={`source-badge source-${source}`}>
-            {source === "ticketmaster" ? "Ticketmaster" : "Front Row"}
+            {source === "ticketmaster" ? "Ticketmaster" : source === "barcelona" ? "Barcelona" : "Front Row"}
           </span>
         )}
       </div>
@@ -85,7 +86,7 @@ export default function EventCard({ event, onBuy }: Props) {
         <div className="event-footer">
           <div className="event-price">
             <strong>
-              {formatEventPrice(event.price, event.currency, isTicketmaster)}
+              {formatEventPrice(event.price, event.currency, isTicketmaster, providerName)}
             </strong>
             {!isTicketmaster && event.available !== undefined && (
               <span className={`stock${soldOut ? " is-sold-out" : event.available <= 10 ? " is-low" : ""}`}>
@@ -102,7 +103,7 @@ export default function EventCard({ event, onBuy }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                View on Ticketmaster
+                {source === "barcelona" ? "More info" : "View on Ticketmaster"}
                 <span className="visually-hidden"> (opens in a new tab)</span>
                 <span aria-hidden="true"> ↗</span>
               </a>

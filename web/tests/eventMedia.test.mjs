@@ -3,7 +3,7 @@ import test from "node:test";
 import { GENRES, imageError, mediaFields, formatEventPrice } from "../src/utils/eventMedia.ts";
 
 test("shared genre options preserve all existing genres and include Catalan", () => {
-  assert.equal(GENRES.length, 11);
+  assert.equal(GENRES.length, 15);
   assert.ok(GENRES.includes("Catalan"));
   assert.equal(GENRES.find(g => g === "Catalan").toLowerCase(), "catalan");
 });
@@ -23,4 +23,6 @@ test("official currencies are formatted; missing external prices use provider co
   assert.equal(formatEventPrice(undefined, undefined, true), "See price on Ticketmaster");
   assert.equal(formatEventPrice(25, undefined, true), "See price on Ticketmaster");
   assert.equal(formatEventPrice(25, undefined, false), "From €25.00");
+  assert.equal(formatEventPrice(0, "EUR", true), "Free");
+  assert.equal(formatEventPrice(0, undefined, true, "the official site"), "See price on the official site");
 });

@@ -1,4 +1,4 @@
-export const GENRES = ["Pop", "Rock", "Indie", "Electronic", "Hip-Hop", "Reggaeton", "Jazz", "Classical", "R&B", "Latin", "Catalan"];
+export const GENRES = ["Pop", "Rock", "Indie", "Electronic", "Hip-Hop", "Reggaeton", "Jazz", "Classical", "R&B", "Latin", "Catalan", "Theatre", "Art", "Talks", "Family"];
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -16,10 +16,11 @@ export function mediaFields(record: Record<string, unknown>) {
   };
 }
 
-export function formatEventPrice(price: number | undefined, currency: string | undefined, external: boolean): string {
+export function formatEventPrice(price: number | undefined, currency: string | undefined, external: boolean, provider = "Ticketmaster"): string {
+  if (price === 0 && (!external || currency)) return "Free";
   if (price !== undefined && Number.isFinite(price) && price >= 0 && (!external || currency)) {
     try { return `From ${new Intl.NumberFormat("en-IE", { style: "currency", currency: currency || "EUR" }).format(price)}`; }
     catch { /* Invalid currency falls back to the provider link. */ }
   }
-  return external ? "See price on Ticketmaster" : "Price unavailable";
+  return external ? `See price on ${provider}` : "Price unavailable";
 }
