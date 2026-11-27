@@ -89,12 +89,12 @@ def main():
         status, events = api(args.api, "/events"); assert status == 200
         for event_id in event_ids:
             item = next(e for e in events if e["eventId"] == event_id)
-            assert item["genre"] == "catalan" and item["imageUrl"] == args.api + "/event-images/" + event_id
-        status, _ = api(args.api, "/preferences", tokens[0], {"genres": ["catalan"], "favoriteArtists": [], "city": "Barcelona", "maxPrice": 80})
+            assert item["genre"] == "music" and item["imageUrl"] == args.api + "/event-images/" + event_id
+        status, _ = api(args.api, "/preferences", tokens[0], {"genres": ["music"], "favoriteArtists": [], "city": "Barcelona", "maxPrice": 80})
         assert status in (200, 201, 204)
-        assert "catalan" in api(args.api, "/preferences", tokens[0])[1]["genres"]
+        assert "music" in api(args.api, "/preferences", tokens[0])[1]["genres"]
         recommendations = api(args.api, "/recommendations", tokens[0])[1]
-        assert any(e["eventId"] in event_ids and e.get("imageUrl") and "you like catalan" in e.get("reasons", []) for e in recommendations)
+        assert any(e["eventId"] in event_ids and e.get("imageUrl") and "you're interested in music" in e.get("reasons", []) for e in recommendations)
         ticket_ids, order_ids = [], []
         for quantity in (1, 4):
             status, result = api(args.api, "/purchases", tokens[0], {"eventId": event_ids[0], "quantity": quantity, "idempotencyKey": f"media-{run_id}-{quantity}"})
@@ -106,7 +106,7 @@ def main():
         _, inventory = api(args.api, f"/events/{event_ids[0]}/inventory")
         assert inventory["sold"] == 5 and inventory["available"] == 95 and inventory["reserved"] == 0
         report.update(result="PASS", imageFormats=["JPEG", "PNG", "WEBP"], imageEventIds=event_ids,
-            catalanPreferencesAndRecommendations=True, orderIds=order_ids, uniqueTickets=5, sold=5, available=95)
+            categoryPreferencesAndRecommendations=True, orderIds=order_ids, uniqueTickets=5, sold=5, available=95)
     finally:
         for username in users: cognito.admin_disable_user(UserPoolId=args.pool, Username=username)
         report["disabledTestUsers"] = len(users)

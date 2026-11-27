@@ -47,6 +47,16 @@ class CategoryParityTests(unittest.TestCase):
         for value in values:
             self.assertRegex(value, r"^[a-z]+$")
 
+    def test_sample_events_use_shared_categories_and_can_be_sold(self):
+        events = json.loads((ROOT / "data/sample_events.json").read_text(encoding="utf-8"))
+        self.assertGreater(len(events), 0)
+        keys = set()
+        for event in events:
+            self.assertIn(event["genre"], backend_categories(), event["name"])
+            self.assertGreater(event["capacity"], 0, event["name"])
+            keys.add((event["artist"], event["date"], event["venue"]))  # load_events.py id
+        self.assertEqual(len(keys), len(events), "two sample events would share an eventId")
+
 
 class CreateEventCategoryTests(unittest.TestCase):
     def setUp(self):
