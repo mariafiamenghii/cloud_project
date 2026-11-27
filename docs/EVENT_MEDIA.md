@@ -1,4 +1,10 @@
-# Event images, official prices and Catalan
+# Event images and official prices
+
+> Update: the external events shown today come from the Barcelona city agenda
+> (`scripts/import_bcn_agenda.py`, see `docs/PART_E.md`). Their images stay on
+> the City Council's host and carry its attribution; missing prices show
+> **See price on the official site**. The Ticketmaster parts below describe the
+> legacy import and are kept as a record of how it was built.
 
 ## Implementation
 
@@ -7,7 +13,7 @@ endpoints. Images are ranked by non-fallback status, landscape aspect ratio,
 proximity to 16:9 and suitable resolution. The URL, dimensions, fallback flag and
 provided attribution are stored. Images stay on the provider's host; none are
 copied into S3. Cards use lazy images, cover sizing, fixed-height containers and
-a music-note fallback on missing/broken images. Credits are displayed when given.
+a neutral star fallback on missing/broken images. Credits are displayed when given.
 
 Official priceRanges are filtered to finite, non-negative minima with a currency.
 EUR is preferred for Spain; otherwise one available currency is selected without
@@ -17,21 +23,21 @@ prices display **See price on Ticketmaster**. Existing valid prices are never
 erased when the API omits prices. Ticketmaster events remain external listings.
 
 Both Home and Recommendations propagate the shared image/currency fields into
-EventCard. The actual genre remains visible; only `catalan` is labelled Catalan.
-Artist Dashboard and Survey share the existing ten genres plus Catalan, storing
-lowercase `catalan`. Existing recommendation scoring already matches this value;
-its application logic is unchanged.
+EventCard. Cards show the event's category by its display name ("finance" ->
+"Finance"); old music genres are shown as stored. The Association Dashboard and
+the My Interests survey share the `CATEGORIES` list (see `docs/PART_E.md`).
 
-## Artist uploads
+## Association uploads
 
-POST `/event-images/uploads` requires a Cognito JWT and artist/admin membership.
+POST `/event-images/uploads` requires a Cognito JWT and membership of the
+`artist` (association) or `admin` group.
 It returns a five-minute presigned S3 POST with a random owner-prefixed key,
 an exact accepted content type and a 1-byte–5-MB size condition. React sends the
 selected local file directly to S3. The form validates JPEG/PNG/WebP and size,
 previews the local file, and supports removal/replacement. Images are optional.
 
 POST `/events` accepts `imageKey`, never arbitrary `imageUrl` or `imageObjectKey`.
-It checks the raw upload belongs to the authenticated artist, enforces actual
+It checks the raw upload belongs to the authenticated association, enforces actual
 size/type, verifies and fully decodes the bytes with pinned Pillow, limits pixels,
 applies orientation, strips metadata by re-encoding and bounds output size. Only
 then does it write a private canonical WebP and associate it with the new event.
