@@ -177,6 +177,7 @@ export default function Purchase({ event, onBack }: Props) {
         <p>{event.artist}</p>
         <p>{event.city} · {event.date}</p>
         {event.venue && <p>Venue: {event.venue}</p>}
+        {event.description && <p>{event.description}</p>}
         <div className="purchase-divider" />
 
         {!orderId && (

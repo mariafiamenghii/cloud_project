@@ -56,6 +56,7 @@ export type CreateEventInput = {
   artist?: string;
   city: string;
   venue?: string;
+  description?: string;
   date: string;
   genre?: string;
   price: number;

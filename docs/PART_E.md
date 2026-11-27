@@ -32,11 +32,18 @@ before the categories existed may still have a music genre (`jazz`, `rock`...):
 they still display, and the recommendations treat them as `music`.
 
 ## 1. Sample events (plan B/C, works offline)
-30 fictional ESADE association events (Finance Club, Tech Club, Luxury Club...)
-in `data/sample_events.json`, covering every category. They are sold in the app.
+25 demo events of real ESADE student associations (Empresa i Societat, ESFS,
+180 Degrees Consulting, The E3 Initiative...) in `data/sample_events.json`, each
+with a short `description`. Dates and prices are fictional. The association names
+are the same as the survey list (`ESADE_ASSOCIATIONS`). They are sold in the app.
 ```
 python3 scripts/load_events.py
+python3 scripts/cleanup_legacy_events.py           # report: lists the older sample events
+python3 scripts/cleanup_legacy_events.py --apply   # after the team agrees: deletes them
 ```
+Older sample events (not in the current JSON) and other legacy events are only
+removed by `scripts/cleanup_legacy_events.py`; events with orders are kept.
+Events without an image show a coloured placeholder by category group.
 
 ## 2. Barcelona city events (plan A, Open Data BCN)
 No API key needed. `scripts/import_bcn_agenda.py` downloads the City Council's

@@ -10,6 +10,7 @@ from categories import CATEGORIES
 
 table = boto3.resource("dynamodb").Table(os.environ["EVENTS_TABLE"])
 REQUIRED = ["name", "city", "date", "price", "capacity"]
+MAX_DESCRIPTION = 300
 
 
 def _response(status, body):
@@ -53,6 +54,11 @@ def handler(event, context):
     if category is None or (category and category not in CATEGORIES):
         return _response(400, {"error": "Category must be one of: " + ", ".join(CATEGORIES)})
 
+    # Optional short description shown on the event card and the purchase page.
+    description = data.get("description", "")
+    if not isinstance(description, str) or len(description.strip()) > MAX_DESCRIPTION:
+        return _response(400, {"error": f"Description must be text of at most {MAX_DESCRIPTION} characters"})
+
     item = {
         "eventId": str(uuid.uuid4()),
         "artistId": claims["sub"],  # the publishing association; delete_event checks it
@@ -74,6 +80,8 @@ def handler(event, context):
             item[field] = str(data[field]).strip()[:80]
     if category:
         item["genre"] = category
+    if description.strip():
+        item["description"] = description.strip()
     published = None
     image_key = data.get("imageKey")
     if image_key is not None and image_key != "":

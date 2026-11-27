@@ -101,6 +101,11 @@ function normalizeEvent(value: unknown): Event {
         ? record.venue
         : undefined,
 
+    description:
+      typeof record.description === "string"
+        ? record.description
+        : undefined,
+
     genre:
       typeof record.genre === "string"
         ? record.genre

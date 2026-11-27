@@ -5,11 +5,14 @@ Run from the repo root:   python3 scripts/cleanup_legacy_events.py            (r
 
 Legacy events are:
 - every Ticketmaster import (source "ticketmaster"),
-- old sample concerts (source "sample") whose genre is not one of CATEGORIES,
+- old sample events (source "sample") that are not in the current
+  data/sample_events.json (old concerts and earlier association samples),
 - old Barcelona imports (source "barcelona_open_data") whose genre is not one
   of CATEGORIES (for example "jazz", "rock" or empty).
 
-The current sample events and Barcelona imports use CATEGORIES and are kept.
+The current sample events and Barcelona imports are kept, so the script can run
+before or after scripts/load_events.py (after is clearer: the report then lists
+exactly the old samples).
 Events published by associations (no source or source "internal") and events
 with any other source are never deleted. An event is also kept if it has any
 order (of any status), any row in the legacy seats table, or sold/reserved
@@ -18,6 +21,8 @@ scan is left untouched. Orders, seats and tickets are never modified.
 """
 import argparse
 import importlib.util
+import json
+import uuid
 from collections import Counter
 from pathlib import Path
 
@@ -36,9 +41,17 @@ def load_categories():
     return set(module.CATEGORIES)
 
 
+def current_sample_ids():
+    """Event ids that scripts/load_events.py gives the current sample events (same formula)."""
+    events = json.loads((ROOT / "data/sample_events.json").read_text(encoding="utf-8"))
+    return {str(uuid.uuid5(uuid.NAMESPACE_URL, f"{e['artist']}|{e['date']}|{e['venue']}")) for e in events}
+
+
 CATEGORIES = load_categories()
+CURRENT_SAMPLE_IDS = current_sample_ids()
 ALWAYS_LEGACY = {"ticketmaster"}
-LEGACY_IF_OLD_GENRE = {"sample", "barcelona_open_data"}
+LEGACY_IF_OLD_GENRE = {"barcelona_open_data"}
+KNOWN_SOURCES = ALWAYS_LEGACY | LEGACY_IF_OLD_GENRE | {"sample", "internal"}
 
 
 def scan(table):
@@ -58,6 +71,8 @@ def is_legacy(event):
     source = event.get("source") or ""
     if source in ALWAYS_LEGACY:
         return True
+    if source == "sample":
+        return event["eventId"] not in CURRENT_SAMPLE_IDS
     return source in LEGACY_IF_OLD_GENRE and genre_of(event) not in CATEGORIES
 
 
@@ -118,7 +133,7 @@ def print_report(events, delete, keep):
         for event, reason in keep:
             print(f"    {event['eventId']} ({event.get('source')}, {event.get('name', '')}): {reason}")
     others = Counter(e.get("source") for e in events
-                     if (e.get("source") or "internal") not in ALWAYS_LEGACY | LEGACY_IF_OLD_GENRE | {"internal"})
+                     if (e.get("source") or "internal") not in KNOWN_SOURCES)
     if others:
         print(f"Events with an unknown source (never deleted): {dict(others)}")
 

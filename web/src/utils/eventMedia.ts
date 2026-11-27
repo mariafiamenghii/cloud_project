@@ -22,7 +22,24 @@ export function categoryLabel(value: string | undefined): string {
   return CATEGORIES.find((c) => c.toLowerCase() === clean.toLowerCase()) ?? clean;
 }
 
-export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/** Colour group of the placeholder shown when an event has no image. */
+export type CategoryTone = "career" | "innovation" | "impact" | "social" | "culture" | "none";
+
+const TONES: Record<Exclude<CategoryTone, "none">, string[]> = {
+  career: ["consulting", "finance", "marketing", "luxury", "networking", "career development"],
+  innovation: ["tech", "entrepreneurship", "workshops", "talks"],
+  impact: ["sustainability", "volunteering", "social impact"],
+  social: ["sports", "social events", "festivals", "food", "family"],
+  culture: ["music", "theatre", "art", "culture"],
+};
+
+export function categoryTone(value: string | undefined): CategoryTone {
+  const clean = (value ?? "").trim().toLowerCase();
+  const tone = (Object.keys(TONES) as (keyof typeof TONES)[]).find((t) => TONES[t].includes(clean));
+  return tone ?? "none";
+}
+
+export const IMAGE_TYPES =["image/jpeg", "image/png", "image/webp"];
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export function imageError(file: { type: string; size: number }): string {

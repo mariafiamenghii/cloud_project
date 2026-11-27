@@ -35,6 +35,14 @@ def web_categories():
     return re.findall(r'"([^"]+)"', body)
 
 
+def esade_associations():
+    """ESADE_ASSOCIATIONS from web/src/utils/interests.ts (the survey chips)."""
+    source = (ROOT / "web/src/utils/interests.ts").read_text(encoding="utf-8")
+    block = re.search(r"export const ESADE_ASSOCIATIONS\s*=\s*\[(.*?)\];", source, re.S)
+    assert block, "ESADE_ASSOCIATIONS array not found in interests.ts"
+    return re.findall(r'"([^"]+)"', block.group(1))
+
+
 class CategoryParityTests(unittest.TestCase):
     def test_web_and_lambda_lists_are_identical(self):
         web = [c.lower() for c in web_categories()]
@@ -51,9 +59,12 @@ class CategoryParityTests(unittest.TestCase):
         events = json.loads((ROOT / "data/sample_events.json").read_text(encoding="utf-8"))
         self.assertGreater(len(events), 0)
         keys = set()
+        survey = esade_associations()
         for event in events:
             self.assertIn(event["genre"], backend_categories(), event["name"])
             self.assertGreater(event["capacity"], 0, event["name"])
+            self.assertIn(event["artist"], survey, "use the exact name of ESADE_ASSOCIATIONS")
+            self.assertTrue(0 < len(event["description"]) <= 300, event["name"])
             keys.add((event["artist"], event["date"], event["venue"]))  # load_events.py id
         self.assertEqual(len(keys), len(events), "two sample events would share an eventId")
 
@@ -99,6 +110,17 @@ class CreateEventCategoryTests(unittest.TestCase):
         response = self.create(genre=" Social Impact ")
         self.assertEqual(response["statusCode"], 201, response)
         self.assertEqual(self.stored(response)["genre"], "social impact")
+
+    def test_description_is_optional_trimmed_and_limited(self):
+        response = self.create(description="  Talks and drinks with alumni.  ")
+        self.assertEqual(response["statusCode"], 201, response)
+        self.assertEqual(self.stored(response)["description"], "Talks and drinks with alumni.")
+        self.assertNotIn("description", self.stored(self.create(description="   ")))
+        self.assertEqual(self.create(description="x" * 300)["statusCode"], 201)
+        for bad in ("x" * 301, 42, ["text"]):
+            response = self.create(description=bad)
+            self.assertEqual(response["statusCode"], 400, bad)
+            self.assertIn("at most 300 characters", json.loads(response["body"])["error"])
 
     def test_unknown_category_is_rejected(self):
         for bad in ("rock", "jazz", "Free text up to forty characters", 42, ["finance"]):
