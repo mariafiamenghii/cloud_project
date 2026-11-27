@@ -1,6 +1,7 @@
 """Authenticated HTTP API v2 purchase intake; fulfillment is asynchronous."""
 
 import base64
+import datetime
 import hashlib
 import json
 import logging
@@ -22,6 +23,16 @@ def _response(status, body):
         "headers": {"Content-Type": "application/json"},
         "body": json.dumps(body),
     }
+
+
+def _is_past(date):
+    """True if the event day ("2027-01-19" or a timestamp starting with it) is before today (UTC).
+
+    An event can still be bought on its own day. Events without a valid date are not blocked.
+    """
+    if not isinstance(date, str) or not re.match(r"\d{4}-\d{2}-\d{2}", date):
+        return False
+    return date[:10] < datetime.datetime.now(datetime.timezone.utc).date().isoformat()
 
 
 def legacy_handler(event, context):
@@ -155,6 +166,8 @@ def handler(event, context):
                 return _response(404, {"error": "Event not found"})
             if item.get("source") in ("ticketmaster", "barcelona_open_data"):
                 return _response(400, {"error": "Use the external ticket provider"})
+            if _is_past(item.get("date")):
+                return _response(400, {"error": "This event has already taken place"})
             if item.get("inventoryVersion") != 2:
                 return _response(503, {"error": "Event inventory is awaiting migration"})
             if item.get("available", 0) < q:

@@ -6,6 +6,7 @@ import sys
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -94,6 +95,30 @@ class QuantityTests(unittest.TestCase):
         self.assertEqual(producer.handler(self.request(seatId="4"), None)["statusCode"], 400)
         self.events.update_item(Key={"eventId": "event"}, UpdateExpression="SET #src = :src", ExpressionAttributeNames={"#src": "source"}, ExpressionAttributeValues={":src": "ticketmaster"})
         self.assertEqual(producer.handler(self.request(), None)["statusCode"], 400)
+
+    def test_past_events_cannot_be_bought(self):
+        today = datetime.now(timezone.utc).date()
+        yesterday = (today - timedelta(days=1)).isoformat()
+
+        def set_date(value):
+            self.events.update_item(Key={"eventId": "event"}, UpdateExpression="SET #d = :d",
+                                    ExpressionAttributeNames={"#d": "date"}, ExpressionAttributeValues={":d": value})
+
+        for past in (yesterday, f"{yesterday}T20:00:00+01:00"):
+            set_date(past)
+            result = producer.handler(self.request(key="past"), None)
+            self.assertEqual(result["statusCode"], 400, past)
+            self.assertEqual(json.loads(result["body"])["error"], "This event has already taken place")
+        self.assertEqual(self.orders.scan()["Count"], 0)
+        self.assertEqual(self.inventory()["available"], 100)
+
+        set_date(today.isoformat())  # still on sale on the day itself
+        self.assertEqual(producer.handler(self.request(key="today"), None)["statusCode"], 202)
+        set_date(yesterday)  # a retry of an accepted purchase keeps its answer
+        self.assertEqual(producer.handler(self.request(key="today"), None)["statusCode"], 202)
+        self.assertEqual(self.orders.scan()["Count"], 1)
+        set_date((today + timedelta(days=1)).isoformat())
+        self.assertEqual(producer.handler(self.request(key="tomorrow"), None)["statusCode"], 202)
 
     def test_idempotency_parameter_conflict_and_repeated_issuance(self):
         order = self.accept(); first = self.fulfill(order)
