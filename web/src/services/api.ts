@@ -250,7 +250,8 @@ export async function getMyOrders(): Promise<Order[]> {
   return data.orders as Order[];
 }
 
-// ARTIST SALES: sales summary of the events created by the logged-in artist.
+// SALES: sales summary of the events created by the logged-in association
+// (Cognito group "artist"). An admin sees every event published on FRONT ROW.
 export type EventSales = {
   eventId: string;
   name?: string;
@@ -282,7 +283,7 @@ export async function getMyEvents(): Promise<EventSales[]> {
   return data.events as EventSales[];
 }
 
-// DELETE EVENTS: an artist deletes their own event, an admin any event.
+// DELETE EVENTS: an association deletes its own event, an admin any event.
 // The API refuses events that already have sales.
 export async function deleteEvent(eventId: string): Promise<void> {
   await apiRequest(

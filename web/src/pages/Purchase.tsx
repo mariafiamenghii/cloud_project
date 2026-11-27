@@ -202,7 +202,7 @@ export default function Purchase({ event, onBack }: Props) {
             <div className="purchase-summary">
               <h3>Order summary</h3>
               <p>Event: {event.name}</p>
-              <p>Artist: {event.artist}</p>
+              <p>Organised by: {event.artist}</p>
               <p>Ticket quantity: {quantityText}</p>
               <p>Price per ticket: {unitPrice !== undefined ? `€${unitPrice.toFixed(2)}` : "Not specified"}</p>
               <p>Total price: {unitPrice !== undefined && Number.isSafeInteger(quantity) && quantity > 0 ? `€${(unitPrice * quantity).toFixed(2)}` : "—"}</p>

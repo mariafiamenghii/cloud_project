@@ -2,13 +2,16 @@
 
 ## Feedback status
 
-- Artist Dashboard is restricted to authenticated Cognito `artist` and `admin`
-  users, matching backend publishing permissions. Public/demo visitors and fans
-  do not get the button. The page also checks permissions. Log out and log back
-  in after changing a Cognito group so the tokens contain the new group.
+- The Association Dashboard and Sales pages are restricted to authenticated
+  Cognito `artist` (shown as "association" in the web) and `admin` users,
+  matching backend publishing permissions. Public/demo visitors and fans do not
+  get the links. The pages also check permissions. Log out and log back in after
+  changing a Cognito group so the tokens contain the new group.
 - Welcome uses the user's name or email, falling back to `User`, never the UUID.
-- Selected survey genres have a checkmark, purple background, outline and
-  `aria-pressed` state.
+- Selected interests and followed associations in the My Interests survey have
+  a checkmark, purple background, outline and `aria-pressed` state.
+- The event form's category list is the shared `CATEGORIES` list, and the
+  category is required.
 - Discover and Recommended for You hide past events and sort by ascending date.
   Date-only events remain visible throughout their day in Europe/Madrid;
   timestamps are compared with the current instant. Invalid dates are hidden.
@@ -20,14 +23,15 @@
 
 `EventCard` needs positive `capacity` for an in-app purchase. Records with missing
 or zero capacity cannot be booked. The UI explains the reason under the button.
-`data/sample_events.json` currently contains positive capacity, so records loaded
-with `scripts/load_events.py` should allow purchase from Discover Events. Older
-records without capacity need to be reloaded or corrected by the data owner.
+`data/sample_events.json` contains ESADE association events with positive capacity,
+so records loaded with `scripts/load_events.py` can be bought from Discover Events.
+Older records without capacity need to be reloaded or corrected by the data owner.
 The local recommendation examples have no inventory and are labelled samples.
 
-Ticketmaster imports deliberately have `capacity: 0` and `source: "ticketmaster"`:
-we do not sell those tickets. Their `externalUrl` opens the official seller.
-If that URL is missing, the card explains that no booking link is available.
+Barcelona city events (`source: "barcelona_open_data"`) and legacy Ticketmaster
+imports deliberately have `capacity: 0`: we do not sell those tickets. Their
+`externalUrl` opens the official page ("More info"). If that URL is missing, the
+card explains that no booking link is available.
 
 ## Deploy the real Amplify app
 
@@ -90,34 +94,26 @@ are included in browser code.
    ```
 
 6. Wait for `SUCCEED`, then open the URL. Verify public events, email login,
-   Welcome, a fan account without Artist Dashboard, and an approved artist account
-   with it. Select/deselect survey genres and verify their visual state. Confirm
-   events are future events in date order. Try an internal test concert purchase:
-   it should show an order reference and accepted-for-processing state. Verify
-   Ticketmaster links separately.
+   Welcome, a fan account without the Association Dashboard, and an association
+   account with it. Select/deselect interests in My Interests and verify their
+   visual state. Confirm events are future events in date order. Buy a ticket for
+   an ESADE association event: it should show an order reference, then the QR
+   ticket once confirmed. Verify the "More info" links of Barcelona events separately.
 
 If the Academy role denies Amplify actions, send the exact denied action to the
 teacher/lab owner. A successful local build does not mean hosting was deployed.
 
-## Pending dependency: purchase outcome (C)
+## Purchase outcome (C and D)
 
-There is currently no order-status GET route in `infra/purchase.tf`. Agree the
-actual endpoint and response with C before adding frontend polling. Proposed
-contract, **not implemented**:
-
-```text
-GET /purchases/{orderId}   Authorization: Bearer <Cognito token>
-200 {"orderId": "...", "orderStatus": "CONFIRMED"}
-```
-
-The handler must check the authenticated user owns the order. Agree how to
-handle a temporary 404 while the queued worker creates the order. Existing
-workflow states are `PENDING`, `RESERVED`, `PAID`, `CONFIRMED`, `REJECTED`, `FAILED`
-and `REVIEW_REQUIRED`. Once the endpoint exists, poll with bounded retries and
-cancel when leaving the page; display confirmed only for `CONFIRMED`, explain
-`REJECTED`/`FAILED`, and show a review message for `REVIEW_REQUIRED`. A network
-error or polling timeout must preserve the reference and an unknown/pending
-outcome, rather than claiming the purchase failed or charging again.
+Implemented. `GET /orders/{orderId}` (`infra/workflow.tf`, Part D) returns the
+caller's own order with its status and QR ticket; another user's order returns
+404. `GET /orders` (`infra/my_tickets.tf`) lists the caller's orders for My
+Tickets. The Purchase page polls the order with bounded retries, treats a
+temporary 404 as "still being processed" while the queued worker creates the
+order, and stops when leaving the page. It shows the ticket only for
+`CONFIRMED`, explains `REJECTED`/`FAILED`, and shows a review message for
+`REVIEW_REQUIRED`. A network error or polling timeout keeps the reference and a
+pending outcome, rather than claiming the purchase failed or charging again.
 
 ## Local validation
 

@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CATEGORIES, imageError, mediaFields, formatEventPrice } from "../src/utils/eventMedia.ts";
+import { CATEGORIES, categoryLabel, imageError, mediaFields, formatEventPrice } from "../src/utils/eventMedia.ts";
+
+test("category labels show the display name; old values and missing ones still display", () => {
+  assert.equal(categoryLabel("finance"), "Finance");
+  assert.equal(categoryLabel(" Networking "), "Networking");
+  assert.equal(categoryLabel("jazz"), "jazz");
+  assert.equal(categoryLabel(""), "Event");
+  assert.equal(categoryLabel(undefined), "Event");
+});
 
 test("shared categories cover ESADE association topics and city culture", () => {
   for (const c of ["Consulting", "Finance", "Luxury", "Networking", "Food", "Music", "Theatre", "Art", "Talks", "Family"]) {

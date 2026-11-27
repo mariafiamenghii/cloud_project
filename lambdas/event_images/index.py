@@ -42,7 +42,7 @@ def handler(event, context):
     if not isinstance(user, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", user):
         return response(401, {"error": "Authentication required"})
     groups = str(claims.get("cognito:groups", "")).translate(str.maketrans({c: " " for c in "[],\"'"})).split()
-    if not {"artist", "admin"}.intersection(groups): return response(403, {"error": "Only artists can upload images"})
+    if not {"artist", "admin"}.intersection(groups): return response(403, {"error": "Only associations can upload images"})
     try:
         body = json.loads(event.get("body") or "{}")
         if not isinstance(body, dict) or set(body) != {"contentType", "size"}: raise ValueError()

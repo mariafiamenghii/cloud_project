@@ -1,7 +1,24 @@
-# Ticketing platform (Terraform starter)
+# FRONT ROW: events for the ESADE community and Barcelona
 
-First working slice: **list events (public)** and **create events (artists only)**,
-with login and roles through Cognito. Everything else is added file by file.
+A serverless event-ticketing platform on AWS, deployed with Terraform.
+
+- **ESADE student associations** (Consulting, Finance, Tech, Luxury...) publish
+  their events and sell tickets in the app (SQS + Step Functions purchase flow,
+  no overselling, QR tickets).
+- **Barcelona city events** are imported from the City Council open data agenda
+  (`scripts/import_bcn_agenda.py`). They are only shown, with a link to the
+  official page. Ticketmaster imports are legacy and being removed.
+- **Students** browse and filter events, answer an interests survey (topics and
+  associations they follow) and get personal recommendations.
+
+Every event has one category from a shared list: `CATEGORIES` in
+`web/src/utils/eventMedia.ts`, with a backend copy in
+`lambdas/create_event/categories.py` (a test keeps both identical). It is
+stored lowercase in the event's `genre` field.
+
+Roles are Cognito groups. In the web, the `artist` group is called
+**association**; the group names `fan`, `artist` and `admin` stay as they are
+because permissions depend on them.
 
 ## Folders
 - `infra/`   Terraform code (all AWS resources)
@@ -46,27 +63,35 @@ CLIENT=$(terraform output -raw client_id)
 # 1) public list (empty at first)
 curl $API/events
 
-# 2) create a test artist
-aws cognito-idp admin-create-user --user-pool-id $POOL --username artist@test.com --message-action SUPPRESS
-aws cognito-idp admin-set-user-password --user-pool-id $POOL --username artist@test.com --password 'Test1234' --permanent
-aws cognito-idp admin-add-user-to-group --user-pool-id $POOL --username artist@test.com --group-name artist
+# 2) create a test association (Cognito group "artist")
+aws cognito-idp admin-create-user --user-pool-id $POOL --username association@test.com --message-action SUPPRESS
+aws cognito-idp admin-set-user-password --user-pool-id $POOL --username association@test.com --password 'Test1234' --permanent
+aws cognito-idp admin-add-user-to-group --user-pool-id $POOL --username association@test.com --group-name artist
 
 # 3) log in and copy the IdToken from the output
 aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id $CLIENT \
-  --auth-parameters USERNAME=artist@test.com,PASSWORD=Test1234
+  --auth-parameters USERNAME=association@test.com,PASSWORD=Test1234
 
-# 4) create an event with that token
+# 4) create an event with that token ("artist" = association name, "genre" = category)
 curl -X POST $API/events -H "Authorization: Bearer <IdToken>" -H "Content-Type: application/json" \
-  -d '{"name":"Test concert","city":"Barcelona","date":"2026-12-20","price":25,"capacity":100}'
+  -d '{"name":"Finance Club Networking Night","artist":"ESADE Finance Club","genre":"networking","city":"Barcelona","date":"2026-12-20","price":10,"capacity":100}'
 ```
-Without a token the POST returns 401. With a fan token it returns 403.
+Without a token the POST returns 401. With a fan token it returns 403. A
+`genre` outside the category list returns 400.
 
 ## Rules
 - Never commit `terraform.tfstate`, `terraform.tfvars`, `.env` or AWS keys (see `.gitignore`).
 - Run `terraform fmt` before every commit (CI checks it).
-- Seats: reserve with a conditional write that also accepts expired holds.
-  Do not rely on DynamoDB TTL to free seats (deletion can be delayed).
+- Tickets are general admission: change an event's `sold`/`reserved`/`available`
+  counters only inside the same transaction as the order change
+  (see `docs/QUANTITY_PURCHASES.md`). Do not rely on DynamoDB TTL to free
+  reserved tickets (deletion can be delayed).
+- Keep the category lists in `web/src/utils/eventMedia.ts` and
+  `lambdas/create_event/categories.py` identical (`tests/test_categories.py`).
 
 ## More docs
 - Part A (frontend feedback, Amplify deployment and GitHub token): see `docs/PART_A.md`
-- Part E (data, survey, recommendations, import, load test): see `docs/PART_E.md`
+- Part C (purchase API and worker): see `docs/PART_C.md`
+- Part D (purchase workflow, QR ticket, email): see `docs/PART_D.md`
+- Part E (sample data, Barcelona import, interests survey, recommendations, load test): see `docs/PART_E.md`
+- Event images: `docs/EVENT_MEDIA.md`. Ticket quantities: `docs/QUANTITY_PURCHASES.md`

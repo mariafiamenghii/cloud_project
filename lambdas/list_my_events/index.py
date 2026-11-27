@@ -48,7 +48,7 @@ def handler(event, context):
     ).split()
     is_admin = "admin" in groups
     if "artist" not in groups and not is_admin:
-        return _response(403, {"error": "Only artists and admins can see sales"})
+        return _response(403, {"error": "Only associations and admins can see sales"})
 
     condition = Attr("source").not_exists() | (
         Attr("source").ne("ticketmaster") & Attr("source").ne("barcelona_open_data")

@@ -1,5 +1,5 @@
-// Dates without a time describe the whole concert day in Spain.
-const concertDay = new Intl.DateTimeFormat("en-CA", {
+// Dates without a time describe the whole event day in Spain.
+const eventDay = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/Madrid",
   year: "numeric",
   month: "2-digit",
@@ -10,7 +10,7 @@ export function upcomingEvents<T extends { date: string }>(
   events: readonly T[],
   now = new Date()
 ): T[] {
-  const today = concertDay.format(now);
+  const today = eventDay.format(now);
   return events
     .filter(({ date }) => {
       const timestamp = Date.parse(date);

@@ -48,7 +48,7 @@ always decides whether inventory is still available.
 
 Existing event records gain `inventoryVersion=2`, `sold`, `reserved`, `available`.
 The invariant is `capacity = sold + reserved + available`, with no negative counter.
-New artist-created events initialize these fields. Event IDs remain unchanged.
+New association-created events initialize these fields. Event IDs remain unchanged.
 
 One additive table, `ticketing-tickets`, has partition key `orderId` and sort key
 `ticketId`. Each row describes exactly one issued ticket. Ticket IDs are derived

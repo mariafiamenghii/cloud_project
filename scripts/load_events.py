@@ -1,8 +1,8 @@
-"""Load sample events into the DynamoDB events table.
+"""Load the sample ESADE association events into the DynamoDB events table.
 
 Run from the repo root:   python scripts/load_events.py
-It is safe to run twice: the eventId is built from artist + date + venue,
-so the same concert is overwritten instead of duplicated.
+It is safe to run twice: the eventId is built from association ("artist") +
+date + venue, so the same event is overwritten instead of duplicated.
 """
 import json
 import os
