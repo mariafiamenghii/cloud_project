@@ -1,4 +1,14 @@
-export const GENRES = ["Pop", "Rock", "Indie", "Electronic", "Hip-Hop", "Reggaeton", "Jazz", "Classical", "R&B", "Latin", "Catalan", "Theatre", "Art", "Talks", "Family"];
+// Event categories: the survey, the event-creation form and the recommendations
+// all use this list. Stored lowercase in the event's "genre" field. The backend
+// copy is lambdas/create_event/categories.py (tests/test_categories.py checks
+// that both lists stay identical).
+export const CATEGORIES = [
+  // ESADE student association topics
+  "Consulting", "Finance", "Tech", "Entrepreneurship", "Marketing", "Luxury",
+  "Sustainability", "Networking", "Sports",
+  // City and culture
+  "Food", "Music", "Theatre", "Art", "Talks", "Family",
+];
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 

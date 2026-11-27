@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GENRES, imageError, mediaFields, formatEventPrice } from "../src/utils/eventMedia.ts";
+import { CATEGORIES, imageError, mediaFields, formatEventPrice } from "../src/utils/eventMedia.ts";
 
-test("shared genre options preserve all existing genres and include Catalan", () => {
-  assert.equal(GENRES.length, 15);
-  assert.ok(GENRES.includes("Catalan"));
-  assert.equal(GENRES.find(g => g === "Catalan").toLowerCase(), "catalan");
+test("shared categories cover ESADE association topics and city culture", () => {
+  for (const c of ["Consulting", "Finance", "Luxury", "Networking", "Food", "Music", "Theatre", "Art", "Talks", "Family"]) {
+    assert.ok(CATEGORIES.includes(c), c);
+  }
+  for (const old of ["Pop", "Rock", "Reggaeton", "Catalan"]) assert.ok(!CATEGORIES.includes(old), old);
+});
+test("categories become unique, single-word lowercase stored values", () => {
+  const stored = CATEGORIES.map(c => c.toLowerCase());
+  assert.equal(new Set(stored).size, CATEGORIES.length);
+  for (const value of stored) assert.match(value, /^[a-z]+$/);
 });
 test("image type and size validation", () => {
   for (const type of ["image/jpeg", "image/png", "image/webp"]) assert.equal(imageError({type, size: 1024}), "");

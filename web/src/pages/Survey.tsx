@@ -1,7 +1,7 @@
 
 import { useState, type FormEvent } from "react";
 import { savePreferences } from "../services/api";
-import { GENRES as genres } from "../utils/eventMedia";
+import { CATEGORIES as genres } from "../utils/eventMedia";
 
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
