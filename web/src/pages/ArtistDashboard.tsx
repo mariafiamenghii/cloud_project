@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GENRES as genres, imageError } from "../utils/eventMedia";
+import { CATEGORIES as categories, imageError } from "../utils/eventMedia";
 import {
   createEvent,
   uploadEventImage,
@@ -16,7 +16,7 @@ export default function ArtistDashboard() {
   const [city, setCity] = useState("Barcelona");
   const [venue, setVenue] = useState("");
   const [date, setDate] = useState("");
-  const [genre, setGenre] = useState("");
+  const [category, setCategory] = useState("");
   const [price, setPrice] = useState("");
   const [capacity, setCapacity] = useState("");
   const [image, setImage] = useState<File | null>(null);
@@ -54,6 +54,7 @@ export default function ArtistDashboard() {
       !name.trim() ||
       !city.trim() ||
       !date ||
+      !category ||
       price.trim() === "" ||
       capacity.trim() === ""
     ) {
@@ -82,7 +83,8 @@ export default function ArtistDashboard() {
       capacity: numericCapacity,
       ...(artist.trim() && { artist: artist.trim() }),
       ...(venue.trim() && { venue: venue.trim() }),
-      ...(genre && { genre: genre.toLowerCase() }),
+      // Stored in the "genre" field (kept for compatibility with the API).
+      genre: category,
     };
 
     setLoading(true);
@@ -127,7 +129,7 @@ export default function ArtistDashboard() {
     setCity("Barcelona");
     setVenue("");
     setDate("");
-    setGenre("");
+    setCategory("");
     setPrice("");
     setCapacity("");
     selectImage(null);
@@ -229,16 +231,17 @@ export default function ArtistDashboard() {
           </div>
 
           <div className="artist-field">
-            <label htmlFor="event-genre">Category</label>
+            <label htmlFor="event-category">Category *</label>
             <select
-              id="event-genre"
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
+              id="event-category"
+              required
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
               <option value="">Select a category</option>
-              {genres.map((g) => (
-                <option key={g} value={g.toLowerCase()}>
-                  {g}
+              {categories.map((c) => (
+                <option key={c} value={c.toLowerCase()}>
+                  {c}
                 </option>
               ))}
             </select>

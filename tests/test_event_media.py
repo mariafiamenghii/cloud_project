@@ -89,7 +89,7 @@ class UploadTests(unittest.TestCase):
         return key
 
     def create(self, key=None, user="artist-a", **extra):
-        data = {"name": "Catalan image event", "city": "Barcelona", "date": "2026-12-20", "genre": "catalan", "price": 25, "capacity": 100, **extra}
+        data = {"name": "Music image event", "city": "Barcelona", "date": "2026-12-20", "genre": "music", "price": 25, "capacity": 100, **extra}
         if key is not None: data["imageKey"] = key
         return self.creator.handler(self.auth(data, user), None)
 
@@ -99,7 +99,7 @@ class UploadTests(unittest.TestCase):
             event_id = json.loads(result["body"])["eventId"]
             item = self.table.get_item(Key={"eventId": event_id})["Item"]
             self.assertEqual((item["available"], item["sold"], item["reserved"]), (100, 0, 0))
-            self.assertEqual(item["genre"], "catalan")
+            self.assertEqual(item["genre"], "music")
             self.assertEqual(item["imageUrl"], "https://api.example/event-images/" + event_id)
             for _ in range(2):
                 response = self.images.handler({"pathParameters": {"eventId": event_id}}, None)
