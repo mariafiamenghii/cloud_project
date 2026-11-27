@@ -16,6 +16,10 @@ CATEGORIES = (
     "sustainability",
     "networking",
     "sports",
+    "volunteering",
+    "social impact",
+    "career development",
+    "social events",
     # City and culture
     "food",
     "music",
@@ -25,4 +29,5 @@ CATEGORIES = (
     "art",
     "talks",
     "family",
+    "culture",
 )

@@ -45,7 +45,7 @@ class CategoryParityTests(unittest.TestCase):
         values = backend_categories()
         self.assertEqual(len(values), len(set(values)))
         for value in values:
-            self.assertRegex(value, r"^[a-z]+$")
+            self.assertRegex(value, r"^[a-z]+( [a-z]+)*$")  # "social impact": one space between words
 
     def test_sample_events_use_shared_categories_and_can_be_sold(self):
         events = json.loads((ROOT / "data/sample_events.json").read_text(encoding="utf-8"))
@@ -94,6 +94,11 @@ class CreateEventCategoryTests(unittest.TestCase):
         response = self.create(genre=" Finance ")
         self.assertEqual(response["statusCode"], 201, response)
         self.assertEqual(self.stored(response)["genre"], "finance")
+
+    def test_multi_word_category_is_stored_lowercase(self):
+        response = self.create(genre=" Social Impact ")
+        self.assertEqual(response["statusCode"], 201, response)
+        self.assertEqual(self.stored(response)["genre"], "social impact")
 
     def test_unknown_category_is_rejected(self):
         for bad in ("rock", "jazz", "Free text up to forty characters", 42, ["finance"]):

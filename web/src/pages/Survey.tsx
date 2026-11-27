@@ -2,14 +2,16 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getEvents, getPreferences, savePreferences } from "../services/api";
 import { CATEGORIES as categories } from "../utils/eventMedia";
-import { MAX_FOLLOWED, associationOptions, followedList, savedInterests } from "../utils/interests";
+import {
+  ESADE_ASSOCIATIONS, MAX_FOLLOWED, associationOptions, followedList, savedInterests, surveyAssociations,
+} from "../utils/interests";
 
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 export default function Survey() {
   const [interests, setInterests] = useState<string[]>([]);
-  const [associations, setAssociations] = useState<string[]>([]);
+  const [associations, setAssociations] = useState<string[]>(ESADE_ASSOCIATIONS);
   const [followed, setFollowed] = useState<string[]>([]);
   const [otherFollowed, setOtherFollowed] = useState("");
   const [city, setCity] = useState("Barcelona");
@@ -19,13 +21,13 @@ export default function Survey() {
   const [error, setError] = useState("");
 
   // Load the associations that publish events and the user's saved answers,
-  // so the survey can be edited later. Failures keep the empty form.
+  // so the survey can be edited later. Failures keep the ESADE list and an empty form.
   useEffect(() => {
     if (demoMode) return;
     let active = true;
 
     getEvents()
-      .then((events) => { if (active) setAssociations(associationOptions(events)); })
+      .then((events) => { if (active) setAssociations(surveyAssociations(associationOptions(events))); })
       .catch(() => undefined);
 
     getPreferences()
@@ -158,6 +160,7 @@ export default function Survey() {
                     type="button"
                     className={selected ? "genre-button selected" : "genre-button"}
                     aria-pressed={selected}
+                    disabled={!selected && followed.length >= MAX_FOLLOWED}
                     onClick={() => setFollowed((current) =>
                       selected
                         ? current.filter((f) => f.toLowerCase() !== name.toLowerCase())
@@ -179,7 +182,7 @@ export default function Survey() {
             type="text"
             value={otherFollowed}
             onChange={(event) => setOtherFollowed(event.target.value)}
-            placeholder="ESADE Finance Club, ESADE Tech Club..."
+            placeholder="180 Degrees Consulting, Esade Sports..."
           />
         </section>
 

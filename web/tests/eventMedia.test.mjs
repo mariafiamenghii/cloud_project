@@ -19,7 +19,7 @@ test("shared categories cover ESADE association topics and city culture", () => 
 test("categories become unique, single-word lowercase stored values", () => {
   const stored = CATEGORIES.map(c => c.toLowerCase());
   assert.equal(new Set(stored).size, CATEGORIES.length);
-  for (const value of stored) assert.match(value, /^[a-z]+$/);
+  for (const value of stored) assert.match(value, /^[a-z]+( [a-z]+)*$/);
 });
 test("image type and size validation", () => {
   for (const type of ["image/jpeg", "image/png", "image/webp"]) assert.equal(imageError({type, size: 1024}), "");
