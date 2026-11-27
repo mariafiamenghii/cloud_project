@@ -140,7 +140,7 @@ type HomeProps = {
 
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: "all", label: "All Events" },
-  { value: "frontrow", label: "Front Row Events" },
+  { value: "frontrow", label: "Esade Events" },
   { value: "barcelona", label: "Barcelona Events" },
 ];
 

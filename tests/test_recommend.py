@@ -27,6 +27,10 @@ class ScoreTests(unittest.TestCase):
             score, _ = recommend.score_event(event(genre=category), {"genres": [category]})
             self.assertEqual(score, 3, category)
 
+    def test_multi_word_categories_match_ignoring_case_and_spaces(self):
+        score, why = recommend.score_event(event(genre="social impact"), {"genres": ["Social  Impact "]})
+        self.assertEqual((score, why), (3, ["you're interested in social impact"]))
+
     def test_old_music_genres_count_as_music_both_ways(self):
         # Old imported event ("jazz") and a new survey answer ("music").
         self.assertEqual(recommend.score_event(event(genre="jazz"), {"genres": ["music"]})[0], 3)

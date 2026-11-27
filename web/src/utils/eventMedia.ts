@@ -5,9 +5,11 @@
 export const CATEGORIES = [
   // ESADE student association topics
   "Consulting", "Finance", "Tech", "Entrepreneurship", "Marketing", "Luxury",
-  "Sustainability", "Networking", "Sports",
+  "Sustainability", "Networking", "Sports", "Volunteering", "Social Impact",
+  "Career Development", "Social Events",
   // City and culture
   "Food", "Music", "Festivals", "Workshops", "Theatre", "Art", "Talks", "Family",
+  "Culture",
 ];
 /**
  * Display name for a stored category ("finance" -> "Finance"). Events saved

@@ -18,8 +18,12 @@ name is kept for compatibility). The list is shared by the event form, the
 interests survey, the recommendations and the Barcelona import:
 
 - ESADE association topics: consulting, finance, tech, entrepreneurship,
-  marketing, luxury, sustainability, networking, sports
-- City and culture: food, music, festivals, workshops, theatre, art, talks, family
+  marketing, luxury, sustainability, networking, sports, volunteering,
+  social impact, career development, social events
+- City and culture: food, music, festivals, workshops, theatre, art, talks, family,
+  culture
+
+Categories with several words are stored with one space (`social impact`).
 
 The list lives in `CATEGORIES` (`web/src/utils/eventMedia.ts`) and in
 `lambdas/create_event/categories.py`. `tests/test_categories.py` fails if they
@@ -68,8 +72,9 @@ curl -X POST $API/preferences -H "Authorization: Bearer $FAN" -H "Content-Type: 
 curl $API/recommendations -H "Authorization: Bearer $FAN"
 ```
 In the web this is the **My Interests** page: the user picks topics (`genres` =
-category values) and the associations they follow (`favoriteArtists`), chosen from
-the associations that publish events or typed in. Saved answers are loaded back,
+category values) and up to 5 associations they follow (`favoriteArtists`), chosen
+from the fixed ESADE list (`ESADE_ASSOCIATIONS` in `web/src/utils/interests.ts`),
+the associations that publish events, or typed in. Saved answers are loaded back,
 so the survey can be edited later.
 
 Score (`lambdas/recommend/index.py`): followed association +5, interest +3, same

@@ -849,6 +849,13 @@
   color: var(--fr-yellow);
 }
 
+.genre-button:disabled {
+  background: #ece6cc;
+  border-color: #c9c2a3;
+  color: var(--fr-text-muted);
+  transform: none;
+}
+
 .survey-submit,
 .artist-submit,
 .purchase-confirm {

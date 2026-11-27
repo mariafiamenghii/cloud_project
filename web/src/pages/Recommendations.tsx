@@ -151,12 +151,9 @@ export default function Recommendations({ onBuy }: { onBuy?: (event: Event) => v
   return (
     <main className="container">
       <section className="hero">
-        <p className="hero-kicker">Picked for your interests</p>
+        <p className="hero-kicker">Based on your interests</p>
         <h1>Recommended for You</h1>
-        <p>
-          ESADE and Barcelona events that match your interests and the
-          associations you follow. Update them in “My Interests”.
-        </p>
+        <p>Discover events that match your interests and preferences.</p>
       </section>
 
       {demoMode && (

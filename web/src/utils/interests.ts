@@ -3,7 +3,32 @@ import { CATEGORIES } from "./eventMedia.ts";
 import { eventSource } from "./eventFilters.ts";
 
 /** How many associations a user can follow (the preferences Lambda keeps 20). */
-export const MAX_FOLLOWED = 10;
+export const MAX_FOLLOWED = 5;
+
+/**
+ * ESADE student associations always offered in the survey. The names match the
+ * "artist" field of data/sample_events.json, so following one scores its events.
+ */
+export const ESADE_ASSOCIATIONS = [
+  "Empresa i Societat",
+  "Esade Student Finance Society (ESFS)",
+  "EJoventut",
+  "180 Degrees Consulting",
+  "The E3 Initiative",
+  "Ennova",
+  "Esade Sports",
+  "Esade Luxury Society",
+  "Esade Student Law Society (ESLS)",
+  "E-Leadership",
+  "Esade Student Council",
+  "Esade International Student Association",
+];
+
+/** The fixed ESADE list first, then other publishing associations, no duplicates. */
+export function surveyAssociations(published: readonly string[]): string[] {
+  const known = new Set(ESADE_ASSOCIATIONS.map((name) => name.toLowerCase()));
+  return [...ESADE_ASSOCIATIONS, ...published.filter((name) => !known.has(name.toLowerCase()))];
+}
 
 /**
  * Saved interests (lowercase values) as category labels to preselect.
