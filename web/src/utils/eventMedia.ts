@@ -9,6 +9,17 @@ export const CATEGORIES = [
   // City and culture
   "Food", "Music", "Festivals", "Workshops", "Theatre", "Art", "Talks", "Family",
 ];
+/**
+ * Display name for a stored category ("finance" -> "Finance"). Events saved
+ * before the categories existed may hold an old music genre ("jazz"); that
+ * value is shown as it is. Events without a category show "Event".
+ */
+export function categoryLabel(value: string | undefined): string {
+  const clean = (value ?? "").trim();
+  if (!clean) return "Event";
+  return CATEGORIES.find((c) => c.toLowerCase() === clean.toLowerCase()) ?? clean;
+}
+
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 

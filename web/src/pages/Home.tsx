@@ -12,40 +12,43 @@ import {
 // Use sample events locally until AWS is connected.
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
-// Demo events for testing the purchase interface.
+// Demo events for testing the purchase interface ("genre" holds the category).
 const sampleEvents: Event[] = [
   {
     id: "1",
-    name: "Indie Night Barcelona",
-    artist: "Various Artists",
+    name: "Finance Club Networking Night",
+    artist: "ESADE Finance Club",
     city: "Barcelona",
+    venue: "ESADE Pedralbes Campus",
     date: "2026-12-12",
-    price: 25,
-    genre: "Indie",
+    price: 10,
+    genre: "networking",
     source: "internal",
     capacity: 50,
   },
   {
     id: "2",
-    name: "Electronic Music Festival",
-    artist: "Various DJs",
-    city: "Madrid",
+    name: "Startup Pitch Day",
+    artist: "ESADE Entrepreneurship Club",
+    city: "Barcelona",
+    venue: "ESADE Sant Cugat Campus",
     date: "2026-12-19",
-    price: 45,
-    genre: "Electronic",
+    price: 0,
+    genre: "entrepreneurship",
     source: "internal",
-    capacity: 50,
+    capacity: 80,
   },
   {
     id: "3",
-    name: "Live Jazz Sessions",
-    artist: "Jazz Collective",
-    city: "Valencia",
+    name: "Sustainable Luxury Talk",
+    artist: "ESADE Luxury Club",
+    city: "Barcelona",
+    venue: "ESADE Pedralbes Campus",
     date: "2027-01-16",
-    price: 20,
-    genre: "Jazz",
+    price: 5,
+    genre: "luxury",
     source: "internal",
-    capacity: 50,
+    capacity: 60,
   },
 ];
 
@@ -221,9 +224,9 @@ export default function Home({ onBuy }: HomeProps) {
   return (
     <main className="container">
       <section className="hero">
-        <p className="hero-kicker">Live music across Spain</p>
-        <h1>Find your next live experience.</h1>
-        <p>Events from FRONT ROW associations and from Barcelona, all in one place.</p>
+        <p className="hero-kicker">ESADE &amp; Barcelona events</p>
+        <h1>Find your next event.</h1>
+        <p>Events from ESADE student associations and from the city of Barcelona, all in one place.</p>
       </section>
 
       <section className="filters" aria-labelledby="filters-title">
@@ -389,7 +392,7 @@ export default function Home({ onBuy }: HomeProps) {
                 {upcoming.length === 0 ? (
                   <>
                     <h3>No upcoming events yet</h3>
-                    <p>New concerts are added regularly. Check back soon.</p>
+                    <p>New events are added regularly. Check back soon.</p>
                   </>
                 ) : (
                   <>

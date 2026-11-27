@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { formatEventPrice } from "../utils/eventMedia";
+import { categoryLabel, formatEventPrice } from "../utils/eventMedia";
 import { EXTERNAL_SOURCES, eventSource, formatEventDate } from "../utils/eventFilters";
 
 export type Event = {
@@ -27,7 +27,7 @@ function EventImage({ event }: { event: Event }) {
     <div className="event-image">
       {event.imageUrl && !failed
         ? <img src={event.imageUrl} alt={event.name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
-        : <span className="event-image-fallback" role="img" aria-label="Event image unavailable">♪</span>}
+        : <span className="event-image-fallback" role="img" aria-label="Event image unavailable">★</span>}
     </div>
     {event.imageUrl && !failed && (event.imageAttribution || event.source === "ticketmaster") &&
       <small className="event-image-credit">{event.imageAttribution || "Image supplied by Ticketmaster"}</small>}
@@ -41,17 +41,18 @@ type Props = {
 
 export default function EventCard({ event, onBuy }: Props) {
   const source = eventSource(event);
-  const isTicketmaster = EXTERNAL_SOURCES.includes(event.source ?? "");
+  // External events (Barcelona agenda, legacy Ticketmaster) are only shown with a link.
+  const isExternal = EXTERNAL_SOURCES.includes(event.source ?? "");
   const providerName = source === "barcelona" ? "the official site" : "Ticketmaster";
-  const soldOut = !isTicketmaster && event.available === 0;
+  const soldOut = !isExternal && event.available === 0;
 
   // Only internal events with positive capacity can be purchased.
   const canPurchase =
-    !isTicketmaster &&
+    !isExternal &&
     (event.capacity ?? 0) > 0 && event.available !== 0;
 
   return (
-    <article className={`event-card${isTicketmaster ? " is-external" : ""}`}>
+    <article className={`event-card${isExternal ? " is-external" : ""}`}>
       <div className="event-media">
         <EventImage key={event.imageUrl || "fallback"} event={event} />
         {source !== "other" && (
@@ -63,7 +64,7 @@ export default function EventCard({ event, onBuy }: Props) {
 
       <div className="event-info">
         <span className="event-genre">
-          {event.genre === "catalan" ? "Catalan" : event.genre || "Event"}
+          {categoryLabel(event.genre)}
         </span>
 
         <h3>{event.name}</h3>
@@ -86,16 +87,16 @@ export default function EventCard({ event, onBuy }: Props) {
         <div className="event-footer">
           <div className="event-price">
             <strong>
-              {formatEventPrice(event.price, event.currency, isTicketmaster, providerName)}
+              {formatEventPrice(event.price, event.currency, isExternal, providerName)}
             </strong>
-            {!isTicketmaster && event.available !== undefined && (
+            {!isExternal && event.available !== undefined && (
               <span className={`stock${soldOut ? " is-sold-out" : event.available <= 10 ? " is-low" : ""}`}>
                 {soldOut ? "Sold out" : `${event.available} tickets remaining`}
               </span>
             )}
           </div>
 
-          {isTicketmaster ? (
+          {isExternal ? (
             event.externalUrl ? (
               <a
                 className="btn btn-outline"

@@ -143,7 +143,9 @@ export default function ArtistDashboard() {
       <section className="artist-header">
         <h1>Association Dashboard</h1>
         <p>
-          Create and publish your events on our ticketing platform.
+          Publish your association's events for the ESADE community.
+          Students find them on Discover Events and in their recommendations,
+          and buy tickets here. Follow your sales on the Sales page.
         </p>
       </section>
 
@@ -200,7 +202,7 @@ export default function ArtistDashboard() {
               id="event-venue"
               type="text"
               maxLength={80}
-              placeholder="Sala Apolo"
+              placeholder="ESADE Pedralbes Campus, Aula Magna"
               value={venue}
               onChange={(e) => setVenue(e.target.value)}
             />

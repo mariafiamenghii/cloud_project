@@ -1,12 +1,13 @@
 // Discover Events filters. Pure functions so they can be unit tested with Node.
 //
 // Data model notes (checked against the events table):
-// - source is "ticketmaster" for imported events, "internal" or missing for events
-//   created on FRONT ROW. The backend sells any event whose source is not
-//   "ticketmaster", so missing/"internal" are Front Row events. Any other value is
-//   unknown and only appears under "All Events".
+// - source is "barcelona_open_data" for events imported from the Barcelona city
+//   agenda, "ticketmaster" for the legacy import (being removed), and "internal"
+//   or missing for events published on FRONT ROW by ESADE associations. External
+//   events are only shown with a link; Front Row events are sold in the app. Any
+//   other value is unknown and only appears under "All Events".
 // - Front Row prices are stored without a currency and are sold in euros.
-//   Ticketmaster prices only count when the record states its currency.
+//   External prices only count when the record states its currency.
 // - Prices are only compared in EUR. When a maximum price is set, events without a
 //   known EUR price (no price, or another currency) are hidden unless the user ticks
 //   "Include events without a listed price". They are never treated as €0.
@@ -139,7 +140,7 @@ const timeFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit",
 });
 
-/** Readable concert date in Spanish time, falling back to the stored value. */
+/** Readable event date in Spanish time, falling back to the stored value. */
 export function formatEventDate(date: string): string {
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(date);
   const timestamp = Date.parse(dateOnly ? `${date}T12:00:00Z` : date);
