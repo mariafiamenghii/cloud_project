@@ -59,7 +59,7 @@ def handler(event, context):
     ).split()
     is_admin = "admin" in groups
     if "artist" not in groups and not is_admin:
-        return _response(403, {"error": "Only artists and admins can delete events"})
+        return _response(403, {"error": "Only associations and admins can delete events"})
 
     event_id = (event.get("pathParameters") or {}).get("eventId")
     if not isinstance(event_id, str) or not event_id.strip() or len(event_id) > 256:

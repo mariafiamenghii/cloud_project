@@ -55,7 +55,7 @@ def handler(event, context):
 
     item = {
         "eventId": str(uuid.uuid4()),
-        "artistId": claims["sub"],  # TODO later: edit/cancel only if artistId == caller
+        "artistId": claims["sub"],  # the publishing association; delete_event checks it
         "name": data["name"],
         "city": data["city"],
         "date": data["date"],
