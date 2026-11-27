@@ -19,6 +19,8 @@ CATEGORIES = (
     # City and culture
     "food",
     "music",
+    "festivals",
+    "workshops",
     "theatre",
     "art",
     "talks",

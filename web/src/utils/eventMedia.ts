@@ -7,7 +7,7 @@ export const CATEGORIES = [
   "Consulting", "Finance", "Tech", "Entrepreneurship", "Marketing", "Luxury",
   "Sustainability", "Networking", "Sports",
   // City and culture
-  "Food", "Music", "Theatre", "Art", "Talks", "Family",
+  "Food", "Music", "Festivals", "Workshops", "Theatre", "Art", "Talks", "Family",
 ];
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
