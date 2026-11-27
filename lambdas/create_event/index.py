@@ -6,6 +6,8 @@ from decimal import Decimal
 
 import boto3
 
+from categories import CATEGORIES
+
 table = boto3.resource("dynamodb").Table(os.environ["EVENTS_TABLE"])
 REQUIRED = ["name", "city", "date", "price", "capacity"]
 
@@ -26,7 +28,7 @@ def handler(event, context):
     # HTTP API turns the group list into a string such as "[artist admin]".
     groups = str(claims.get("cognito:groups", "")).translate(str.maketrans({c: " " for c in "[],\"'"})).split()
     if "artist" not in groups and "admin" not in groups:
-        return _response(403, {"error": "Only artists can create events"})
+        return _response(403, {"error": "Only associations can create events"})
 
     try:
         data = json.loads(event.get("body") or "{}", parse_float=Decimal)
@@ -44,6 +46,13 @@ def handler(event, context):
             or isinstance(price, bool) or not isinstance(price, (int, Decimal)) or not Decimal(price).is_finite() or price < 0):
         return _response(400, {"error": "Capacity must be a positive integer and price must be non-negative"})
 
+    # The category is stored in the "genre" field (kept for compatibility).
+    # It is optional for API callers, but if given it must be one of CATEGORIES.
+    raw_category = data.get("genre", "")
+    category = raw_category.strip().lower() if isinstance(raw_category, str) else None
+    if category is None or (category and category not in CATEGORIES):
+        return _response(400, {"error": "Category must be one of: " + ", ".join(CATEGORIES)})
+
     item = {
         "eventId": str(uuid.uuid4()),
         "artistId": claims["sub"],  # TODO later: edit/cancel only if artistId == caller
@@ -58,12 +67,13 @@ def handler(event, context):
         "reserved": 0,
         "available": int(capacity),
     }
-    # Optional fields used by the recommendations (genre, artist name, venue).
+    # Optional fields used by the recommendations ("artist" = association or
+    # club name, venue, and the category validated above).
     for field in ("artist", "venue"):
         if str(data.get(field, "")).strip():
             item[field] = str(data[field]).strip()[:80]
-    if str(data.get("genre", "")).strip():
-        item["genre"] = str(data["genre"]).strip().lower()[:40]
+    if category:
+        item["genre"] = category
     published = None
     image_key = data.get("imageKey")
     if image_key is not None and image_key != "":

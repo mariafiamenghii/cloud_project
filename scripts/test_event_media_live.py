@@ -60,7 +60,7 @@ def main():
         cognito.admin_add_user_to_group(UserPoolId=args.pool, Username=users[1], GroupName="artist"); tokens[1] = login(1)
 
         def event_body(name):
-            return {"name": name + " " + run_id, "artist": "Cloud Lab Test", "city": "Barcelona", "genre": "catalan",
+            return {"name": name + " " + run_id, "artist": "Cloud Lab Test", "city": "Barcelona", "genre": "music",
                 "date": (date.today() + timedelta(days=30)).isoformat(), "price": 25, "capacity": 100}
 
         for fmt, mime in (("JPEG", "image/jpeg"), ("PNG", "image/png"), ("WEBP", "image/webp")):
