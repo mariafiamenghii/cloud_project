@@ -12,7 +12,7 @@ export type MainTab = "home" | "survey" | "recommendations";
 
 export const MAIN_TABS: { page: MainTab; label: string }[] = [
   { page: "home", label: "Discover Events" },
-  { page: "survey", label: "Music Preferences" },
+  { page: "survey", label: "My Interests" },
   { page: "recommendations", label: "Recommended for You" },
 ];
 

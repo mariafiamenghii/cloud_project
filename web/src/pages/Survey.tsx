@@ -1,27 +1,57 @@
 
-import { useState, type FormEvent } from "react";
-import { savePreferences } from "../services/api";
-import { CATEGORIES as genres } from "../utils/eventMedia";
+import { useEffect, useState, type FormEvent } from "react";
+import { getEvents, getPreferences, savePreferences } from "../services/api";
+import { CATEGORIES as categories } from "../utils/eventMedia";
+import { MAX_FOLLOWED, associationOptions, followedList, savedInterests } from "../utils/interests";
 
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 export default function Survey() {
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [artists, setArtists] = useState("");
+  const [interests, setInterests] = useState<string[]>([]);
+  const [associations, setAssociations] = useState<string[]>([]);
+  const [followed, setFollowed] = useState<string[]>([]);
+  const [otherFollowed, setOtherFollowed] = useState("");
   const [city, setCity] = useState("Barcelona");
   const [maxPrice, setMaxPrice] = useState(80);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  function toggleGenre(genre: string) {
-    setSelectedGenres((current) =>
-      current.includes(genre)
-        ? current.filter((g) => g !== genre)
-        : [...current, genre]
-    );
+  // Load the associations that publish events and the user's saved answers,
+  // so the survey can be edited later. Failures keep the empty form.
+  useEffect(() => {
+    if (demoMode) return;
+    let active = true;
+
+    getEvents()
+      .then((events) => { if (active) setAssociations(associationOptions(events)); })
+      .catch(() => undefined);
+
+    getPreferences()
+      .then((saved) => {
+        if (!active || !saved || typeof saved !== "object") return;
+        const prefs = saved as Record<string, unknown>;
+        setInterests(savedInterests(prefs.genres));
+        if (Array.isArray(prefs.favoriteArtists)) {
+          setFollowed(prefs.favoriteArtists.filter((name): name is string => typeof name === "string"));
+        }
+        if (typeof prefs.city === "string" && prefs.city.trim()) setCity(prefs.city);
+        if (typeof prefs.maxPrice === "number") setMaxPrice(prefs.maxPrice);
+      })
+      .catch(() => undefined);
+
+    return () => { active = false; };
+  }, []);
+
+  function toggle(list: string[], value: string): string[] {
+    return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
   }
+
+  // Followed names that are not in the published list (typed before, or saved).
+  const extraFollowed = followed.filter(
+    (name) => !associations.some((a) => a.toLowerCase() === name.toLowerCase())
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,12 +60,10 @@ export default function Survey() {
     setMessage("");
 
     const preferences = {
-      genres: selectedGenres.map((genre) => genre.toLowerCase()),
-      favoriteArtists: artists
-        .split(",")
-        .map((artist) => artist.trim())
-        .filter(Boolean)
-        .slice(0, 5),
+      // Field names are kept for compatibility with the preferences API:
+      // "genres" = interests (category values), "favoriteArtists" = associations.
+      genres: interests.map((category) => category.toLowerCase()),
+      favoriteArtists: followedList(followed, otherFollowed),
       city: city.trim(),
       maxPrice,
     };
@@ -44,7 +72,7 @@ export default function Survey() {
       console.log("Demo preferences:", preferences);
 
       setMessage(
-        "Demo complete! Your preferences were not saved to AWS."
+        "Demo complete! Your interests were not saved to AWS."
       );
       return;
     }
@@ -54,14 +82,16 @@ export default function Survey() {
     try {
       await savePreferences(preferences);
 
+      setFollowed(preferences.favoriteArtists);
+      setOtherFollowed("");
       setMessage(
-        "Your music preferences have been saved successfully!"
+        "Your interests have been saved. Check “Recommended for You”."
       );
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to save preferences. Please try again."
+          : "Unable to save your interests. Please try again."
       );
     } finally {
       setLoading(false);
@@ -70,26 +100,27 @@ export default function Survey() {
 
   return (
     <main className="survey-container">
-      <h1>Discover music you'll love</h1>
+      <h1>Find events you'll love</h1>
 
       <p>
-        Tell us what you like so we can recommend
-        the best concerts and events for you.
+        Tell us what you're into and which associations you follow,
+        and we'll recommend ESADE and Barcelona events for you.
+        You can change your answers at any time.
       </p>
 
       <form onSubmit={handleSubmit}>
-        {/* MUSIC GENRES */}
+        {/* INTERESTS (event categories) */}
         <section className="survey-section">
-          <h2>1. What music genres do you enjoy?</h2>
+          <h2>1. Which topics interest you?</h2>
           <p>Select as many as you like.</p>
 
           <div className="genre-grid">
-            {genres.map((genre) => {
-              const selected = selectedGenres.includes(genre);
+            {categories.map((category) => {
+              const selected = interests.includes(category);
 
               return (
                 <button
-                  key={genre}
+                  key={category}
                   type="button"
                   className={
                     selected
@@ -97,30 +128,58 @@ export default function Survey() {
                       : "genre-button"
                   }
                   aria-pressed={selected}
-                  onClick={() => toggleGenre(genre)}
+                  onClick={() => setInterests((current) => toggle(current, category))}
                 >
                   {selected && <span aria-hidden="true">✓ </span>}
-                  {genre}
+                  {category}
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* FAVORITE ARTISTS */}
+        {/* FOLLOWED ASSOCIATIONS */}
         <section className="survey-section">
-          <h2>2. Which associations or artists do you follow?</h2>
+          <h2>2. Which associations do you follow?</h2>
 
           <p>
-            Enter up to five artists, separated by commas.
+            Events from associations you follow get a higher score.
+            Choose up to {MAX_FOLLOWED}.
           </p>
 
+          {(associations.length > 0 || extraFollowed.length > 0) && (
+            <div className="genre-grid">
+              {[...associations, ...extraFollowed].map((name) => {
+                const selected = followed.some((f) => f.toLowerCase() === name.toLowerCase());
+
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    className={selected ? "genre-button selected" : "genre-button"}
+                    aria-pressed={selected}
+                    onClick={() => setFollowed((current) =>
+                      selected
+                        ? current.filter((f) => f.toLowerCase() !== name.toLowerCase())
+                        : [...current, name])}
+                  >
+                    {selected && <span aria-hidden="true">✓ </span>}
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <label htmlFor="other-associations">
+            Other associations or clubs (separated by commas)
+          </label>
           <input
+            id="other-associations"
             type="text"
-            value={artists}
-            onChange={(event) => setArtists(event.target.value)}
-            aria-label="Favorite associations or artists"
-            placeholder="Coldplay, Rosalía, Bad Bunny..."
+            value={otherFollowed}
+            onChange={(event) => setOtherFollowed(event.target.value)}
+            placeholder="ESADE Finance Club, ESADE Tech Club..."
           />
         </section>
 
@@ -129,7 +188,7 @@ export default function Survey() {
           <h2>3. Where do you live?</h2>
 
           <p>
-            We'll prioritize concerts happening near your city.
+            We'll prioritize events happening in your city.
           </p>
 
           <input
@@ -169,7 +228,7 @@ export default function Survey() {
           className="survey-submit"
           disabled={loading}
         >
-          {loading ? "Saving..." : "Save my preferences"}
+          {loading ? "Saving..." : "Save my interests"}
         </button>
 
         {message && (

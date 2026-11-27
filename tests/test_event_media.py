@@ -155,7 +155,7 @@ class UploadTests(unittest.TestCase):
         self.table.put_item(Item={"eventId": "native", "source": "internal"})
         with self.assertRaises(ClientError): safe_update(self.table, {"eventId": "native"}, updates)
 
-    def test_catalan_recommendation_matches_saved_preference(self):
+    def test_old_catalan_genre_still_matches_as_music(self):
         recommend = load_lambda("recommend")
         score, reasons = recommend.score_event({"genre": "catalan"}, {"genres": ["catalan"]})
-        self.assertEqual(score, 3); self.assertIn("you like catalan", reasons)
+        self.assertEqual(score, 3); self.assertIn("you're interested in music", reasons)

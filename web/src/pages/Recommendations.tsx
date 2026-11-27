@@ -16,27 +16,27 @@ const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
 const demoRecommendations: RecommendedEvent[] = [
   {
     id: "demo-1",
-    name: "Indie Night Barcelona",
-    artist: "Various Artists",
+    name: "Finance Club Networking Night",
+    artist: "ESADE Finance Club",
     city: "Barcelona",
     date: "2026-12-12",
-    price: 25,
-    genre: "Indie",
+    price: 10,
+    genre: "networking",
     source: "sample",
-    score: 6,
-    reasons: ["you like indie", "in Barcelona", "fits your budget"],
+    score: 11,
+    reasons: ["you're interested in networking", "by ESADE Finance Club, which you follow", "in Barcelona", "fits your budget"],
   },
   {
     id: "demo-2",
-    name: "Electronic Music Festival",
-    artist: "Various DJs",
-    city: "Madrid",
+    name: "Christmas Market Food Tour",
+    artist: "Barcelona",
+    city: "Barcelona",
     date: "2026-12-19",
-    price: 45,
-    genre: "Electronic",
+    price: 0,
+    genre: "food",
     source: "sample",
-    score: 4,
-    reasons: ["you like electronic", "fits your budget"],
+    score: 6,
+    reasons: ["you're interested in food", "in Barcelona", "free entry"],
   },
 ];
 
@@ -151,10 +151,11 @@ export default function Recommendations({ onBuy }: { onBuy?: (event: Event) => v
   return (
     <main className="container">
       <section className="hero">
-        <p className="hero-kicker">Picked for your taste</p>
+        <p className="hero-kicker">Picked for your interests</p>
         <h1>Recommended for You</h1>
         <p>
-          Discover concerts that match your music taste.
+          ESADE and Barcelona events that match your interests and the
+          associations you follow. Update them in “My Interests”.
         </p>
       </section>
 
@@ -162,7 +163,7 @@ export default function Recommendations({ onBuy }: { onBuy?: (event: Event) => v
         <p>Demo mode — showing example recommendations.</p>
       )}
 
-      {loading && <p>Finding your concerts...</p>}
+      {loading && <p>Finding your events...</p>}
 
       {error && <p role="alert">{error}</p>}
 
@@ -185,7 +186,7 @@ export default function Recommendations({ onBuy }: { onBuy?: (event: Event) => v
           </div>
 
           {upcoming.length === 0 && (
-            <p>No recommendations available yet.</p>
+            <p>No upcoming events to recommend yet. Check back soon.</p>
           )}
         </>
       )}
