@@ -588,10 +588,38 @@
 }
 
 .event-image-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 0 16px;
   color: var(--fr-yellow);
   font-size: 64px;
   font-weight: 900;
+  line-height: 1;
+  text-align: center;
 }
+
+.event-image-fallback-label {
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* Placeholder colour by category group (categoryTone in utils/eventMedia.ts). */
+.event-image-fallback:not(.tone-none) {
+  color: var(--fr-black);
+}
+
+.tone-career { background: #a9d4ff; }
+.tone-innovation { background: #d3c2ff; }
+.tone-impact { background: #a6e8c5; }
+.tone-social { background: #ffc995; }
+.tone-culture { background: #ffb8cb; }
 
 .event-image-credit {
   display: block;
@@ -655,6 +683,17 @@
   margin: 0 0 12px;
   color: var(--fr-text-muted);
   font-weight: 600;
+}
+
+.event-description {
+  display: -webkit-box;
+  margin: 0 0 12px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .event-meta {

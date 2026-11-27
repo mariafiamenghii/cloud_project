@@ -8,6 +8,8 @@ import {
 } from "../services/api";
 
 const demoMode = import.meta.env.VITE_DEMO_MODE === "true";
+// Same limit as MAX_DESCRIPTION in lambdas/create_event/index.py.
+const MAX_DESCRIPTION = 300;
 
 
 export default function ArtistDashboard() {
@@ -15,6 +17,7 @@ export default function ArtistDashboard() {
   const [artist, setArtist] = useState("");
   const [city, setCity] = useState("Barcelona");
   const [venue, setVenue] = useState("");
+  const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState("");
@@ -83,6 +86,7 @@ export default function ArtistDashboard() {
       capacity: numericCapacity,
       ...(artist.trim() && { artist: artist.trim() }),
       ...(venue.trim() && { venue: venue.trim() }),
+      ...(description.trim() && { description: description.trim() }),
       // Stored in the "genre" field (kept for compatibility with the API).
       genre: category,
     };
@@ -128,6 +132,7 @@ export default function ArtistDashboard() {
     setArtist("");
     setCity("Barcelona");
     setVenue("");
+    setDescription("");
     setDate("");
     setCategory("");
     setPrice("");
@@ -207,6 +212,19 @@ export default function ArtistDashboard() {
               onChange={(e) => setVenue(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="artist-field">
+          <label htmlFor="event-description">Description</label>
+          <textarea
+            id="event-description"
+            rows={3}
+            maxLength={MAX_DESCRIPTION}
+            placeholder="What happens at the event and who it is for."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <small>Optional. {description.length}/{MAX_DESCRIPTION} characters.</small>
         </div>
 
         <div className="artist-field">

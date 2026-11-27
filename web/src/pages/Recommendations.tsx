@@ -75,6 +75,9 @@ function normalizeRecommendation(value: unknown): RecommendedEvent {
     venue: typeof record.venue === "string"
       ? record.venue
       : undefined,
+    description: typeof record.description === "string"
+      ? record.description
+      : undefined,
     genre: typeof record.genre === "string"
       ? record.genre
       : undefined,

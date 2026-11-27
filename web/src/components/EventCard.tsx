@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { categoryLabel, formatEventPrice } from "../utils/eventMedia";
+import { categoryLabel, categoryTone, formatEventPrice } from "../utils/eventMedia";
 import { EXTERNAL_SOURCES, eventSource, formatEventDate } from "../utils/eventFilters";
 
 export type Event = {
@@ -10,6 +10,7 @@ export type Event = {
   city: string;
   date: string;
   venue?: string;
+  description?: string;
   price?: number;
   genre?: string;
   source?: string;
@@ -27,7 +28,11 @@ function EventImage({ event }: { event: Event }) {
     <div className="event-image">
       {event.imageUrl && !failed
         ? <img src={event.imageUrl} alt={event.name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
-        : <span className="event-image-fallback" role="img" aria-label="Event image unavailable">★</span>}
+        : <span className={`event-image-fallback tone-${categoryTone(event.genre)}`} role="img"
+            aria-label={`${categoryLabel(event.genre)} event, no image`}>
+            <span aria-hidden="true">★</span>
+            {event.genre && <span className="event-image-fallback-label" aria-hidden="true">{categoryLabel(event.genre)}</span>}
+          </span>}
     </div>
     {event.imageUrl && !failed && (event.imageAttribution || event.source === "ticketmaster") &&
       <small className="event-image-credit">{event.imageAttribution || "Image supplied by Ticketmaster"}</small>}
@@ -69,6 +74,7 @@ export default function EventCard({ event, onBuy }: Props) {
 
         <h3>{event.name}</h3>
         <p className="event-artist">{event.artist}</p>
+        {event.description && <p className="event-description">{event.description}</p>}
 
         <dl className="event-meta">
           <div>

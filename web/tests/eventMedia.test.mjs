@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CATEGORIES, categoryLabel, imageError, mediaFields, formatEventPrice } from "../src/utils/eventMedia.ts";
+import { CATEGORIES, categoryLabel, categoryTone, imageError, mediaFields, formatEventPrice } from "../src/utils/eventMedia.ts";
+
+test("every category has a placeholder colour; old or missing values keep the dark one", () => {
+  for (const c of CATEGORIES) assert.notEqual(categoryTone(c.toLowerCase()), "none", c);
+  assert.equal(categoryTone(" Social Impact "), "impact");
+  assert.equal(categoryTone("jazz"), "none");
+  assert.equal(categoryTone(undefined), "none");
+});
 
 test("category labels show the display name; old values and missing ones still display", () => {
   assert.equal(categoryLabel("finance"), "Finance");
