@@ -64,7 +64,8 @@ CLIENT=$(terraform output -raw client_id)
 curl $API/events
 
 # 2) create a test association (Cognito group "artist")
-aws cognito-idp admin-create-user --user-pool-id $POOL --username association@test.com --message-action SUPPRESS
+aws cognito-idp admin-create-user --user-pool-id $POOL --username association@test.com --message-action SUPPRESS \
+  --user-attributes Name=email,Value=association@test.com Name=email_verified,Value=true
 aws cognito-idp admin-set-user-password --user-pool-id $POOL --username association@test.com --password 'Test1234' --permanent
 aws cognito-idp admin-add-user-to-group --user-pool-id $POOL --username association@test.com --group-name artist
 
@@ -91,6 +92,7 @@ Without a token the POST returns 401. With a fan token it returns 403. A
 
 ## More docs
 - Part A (frontend feedback, Amplify deployment and GitHub token): see `docs/PART_A.md`
+- Part B (login, roles, protected routes, demo users): see `docs/PART_B.md`
 - Part C (purchase API and worker): see `docs/PART_C.md`
 - Part D (purchase workflow, QR ticket, email): see `docs/PART_D.md`
 - Part E (sample data, Barcelona import, interests survey, recommendations, load test): see `docs/PART_E.md`
